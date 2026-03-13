@@ -4,30 +4,30 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![OpenClaw](https://img.shields.io/badge/OpenClaw-skill-blue)](https://docs.openclaw.ai)
 
-PfChat es una skill de OpenClaw para consultar y analizar un firewall pfSense en tiempo real a través de la REST API de pfSense.
+PfChat is an OpenClaw skill for querying and analyzing a pfSense firewall in real time through the pfSense REST API.
 
-Es agnóstica al modelo: la skill obtiene datos vivos desde pfSense y deja el análisis al agente actual de OpenClaw, sin amarrarse a un proveedor específico de LLM.
+It is model-agnostic: the skill fetches live data from pfSense and lets the current OpenClaw agent analyze it, instead of locking the workflow to a specific LLM provider.
 
-## Qué hace
+## What it does
 
-- Consulta dispositivos conectados usando ARP/DHCP cuando la API los expone
-- Hace fallback a hosts activos inferidos desde `firewall/states` cuando ARP/DHCP no está disponible
-- Inspecciona estados activos del firewall y conexiones en vivo
-- Revisa actividad reciente del firewall
-- Verifica estado de interfaces, gateways y sistema
-- Revisa reglas del firewall
-- Genera un snapshot útil para triage de seguridad
-- Descubre capacidades soportadas desde el OpenAPI schema en vivo
+- Query connected devices using ARP/DHCP when the API exposes them
+- Fall back to inferred active hosts from `firewall/states` when ARP/DHCP is unavailable
+- Inspect active firewall states and live connections
+- Review recent firewall activity
+- Check interface, gateway, and system status
+- Review firewall rules
+- Build a live snapshot for security triage
+- Discover supported capabilities from the live OpenAPI schema
 
-## Inicio rápido
+## Quick start
 
-### 1. Configura el acceso a pfSense
+### 1. Configure pfSense access
 
 ```bash
 cp .env.example .env
 ```
 
-Ejemplo:
+Example:
 
 ```env
 PFSENSE_HOST=192.168.0.254
@@ -35,13 +35,13 @@ PFSENSE_API_KEY=replace-me
 PFSENSE_VERIFY_SSL=false
 ```
 
-Notas:
-- `PFSENSE_VERIFY_SSL=false` mantiene HTTPS activo; solo desactiva la validación de confianza del certificado.
-- Esto es normal cuando pfSense usa certificado autofirmado o una CA interna que el host cliente no tiene instalada.
-- El CLI hace fallback al archivo `pfchat/.env` según la ruta del script, lo cual ayuda cuando la skill se invoca desde otros canales o directorios de trabajo.
-- No subas claves reales al repositorio.
+Notes:
+- `PFSENSE_VERIFY_SSL=false` keeps HTTPS enabled; it only disables certificate trust validation.
+- This is normal when pfSense uses a self-signed certificate or an internal CA that is not installed on the client host.
+- The CLI falls back to the project-local `pfchat/.env` based on the script path, which helps when the skill is invoked from another channel or working directory.
+- Do not commit real API keys.
 
-### 2. Ejecuta consultas directas
+### 2. Run direct queries
 
 ```bash
 python3 pfchat/scripts/pfchat_query.py capabilities
@@ -50,19 +50,19 @@ python3 pfchat/scripts/pfchat_query.py health
 python3 pfchat/scripts/pfchat_query.py snapshot --limit 150
 ```
 
-### 3. Úsala desde OpenClaw
+### 3. Use from OpenClaw
 
-Prompts típicos:
+Typical prompts:
 
-- "revisa qué dispositivos están conectados al pfSense"
-- "mira si hay algo sospechoso en mi firewall"
-- "qué está haciendo iphoneLeo ahora mismo"
-- "cuál es mi dirección WAN"
-- "muéstrame reglas de firewall relacionadas con OpenVPN"
+- "check what devices are connected to pfSense"
+- "see if there is anything suspicious on my firewall"
+- "what is iphoneLeo doing right now?"
+- "what is my WAN address?"
+- "show me firewall rules related to OpenVPN"
 
-## Ejemplo de salida
+## Example output
 
-### Capacidades
+### Capabilities
 
 ```json
 {
@@ -104,16 +104,16 @@ Prompts típicos:
 }
 ```
 
-## Estructura del repositorio
+## Repository layout
 
 ```text
 pfchat/
 ├── README.md
-├── README.en.md
+├── README.es.md
 ├── TODO.md
-├── TODO.en.md
+├── TODO.es.md
 ├── CHANGELOG.md
-├── CHANGELOG.en.md
+├── CHANGELOG.es.md
 ├── LICENSE
 ├── .gitignore
 ├── .env.example
@@ -130,9 +130,9 @@ pfchat/
         └── investigation-patterns.md
 ```
 
-## CLI auxiliar
+## Helper CLI
 
-Desde la raíz del repo:
+From the repository root:
 
 ```bash
 python3 pfchat/scripts/pfchat_query.py capabilities
@@ -147,29 +147,29 @@ python3 pfchat/scripts/pfchat_query.py rules --filter descr__contains=OpenVPN
 python3 pfchat/scripts/pfchat_query.py snapshot --limit 150
 ```
 
-## Uso desde Telegram
+## Telegram usage
 
-Si OpenClaw ya está conectado a Telegram, no necesitas un bot separado dentro de PfChat. Puedes hablarle a OpenClaw desde Telegram y dejar que use PfChat detrás para consultar pfSense.
+If OpenClaw is already connected to Telegram, you do not need a separate bot inside PfChat. You can talk to OpenClaw from Telegram and let it use PfChat behind the scenes to query pfSense.
 
-Consulta `TELEGRAM.md` para prompts sugeridos, flujo recomendado y base de alertas/resúmenes.
+See `TELEGRAM.md` for suggested prompts, recommended workflow, and the alerting baseline.
 
-## Resumen diario por email
+## Daily email summary
 
-PfChat puede generar un resumen diario del firewall y enviarlo por correo cuando OpenClaw tenga configurado Resend.
+PfChat can generate a daily firewall summary and deliver it by email when OpenClaw has Resend configured.
 
-Script local incluido:
+Included local script:
 - `scripts/send_daily_summary.py`
 
-En este host, la forma correcta de que cron jobs y sesiones aisladas hereden variables globales es cargarlas desde el servicio `openclaw-gateway.service` mediante `EnvironmentFile`.
+On this host, the correct way for cron jobs and isolated sessions to inherit global variables is to load them from the `openclaw-gateway.service` unit through `EnvironmentFile`.
 
-Los reportes de PfChat deben preferir nombres de dispositivos tomados del inventario local (`TOOLS.md`). Si no existe mapping local, pueden usar reverse lookup y dejar la IP como respaldo.
+PfChat reports should prefer device names from the local inventory (`TOOLS.md`). If no local mapping exists, they may use reverse lookup and keep the IP only as fallback detail.
 
-## Estado actual
+## Current status
 
-PfChat ya cubre el workflow de consulta en vivo por API. El foco actual es robustez, compatibilidad entre versiones y pulido operativo.
+PfChat already covers the live API workflow. The current focus is robustness, version compatibility, and operational polish.
 
-Consulta `TODO.md`, `CHANGELOG.md` y `TELEGRAM.md` para ver pendientes, cambios y uso por canal.
+See `TODO.md`, `TODO.es.md`, `CHANGELOG.md`, `CHANGELOG.es.md`, and `TELEGRAM.md` for pending work, recent changes, and channel usage.
 
-## Licencia
+## License
 
 MIT

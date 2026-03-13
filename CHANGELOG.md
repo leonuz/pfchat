@@ -1,58 +1,59 @@
 # CHANGELOG — PfChat
 
-Todos los cambios relevantes de este proyecto se documentan aquí.
+All notable changes to this project will be documented in this file.
 
 ## [0.1.1] - 2026-03-13
 
-### Añadido
+### Added
 
-- Documento `TELEGRAM.md` con el flujo recomendado para usar PfChat a través de OpenClaw en Telegram
-- Documentación del caso de uso de resumen diario por email mediante OpenClaw + Resend
-- Script `pfchat/scripts/send_daily_summary.py` para generar y enviar el resumen diario por correo
-- Soporte operativo para variables globales heredadas por OpenClaw Gateway vía `EnvironmentFile`
-- Preferencia de nombres de dispositivos sobre IPs en reportes, usando inventario local y reverse lookup como fallback
-- Integración de hallazgos upstream del proyecto pfrest y del schema OpenAPI real expuesto por la instancia local
-- Descubrimiento automático de capacidades soportadas desde `/api/v2/schema/openapi`
-- Soporte inicial para filtros de consulta en `connections` y `rules`
-- Cobertura explícita en la skill para preguntas sobre dirección WAN / IP pública del firewall, también en español
-- Fallback de configuración al archivo `pfchat/.env` basado en la ruta del script, para invocaciones desde otros canales/contextos
-- Compatibilidad real con una instalación de pfSense validada en este entorno
-- Fallback de `health` hacia `status/system` cuando `system/stats` no existe
-- Modo degradado para `devices` cuando ARP/DHCP no están expuestos, infiriendo hosts internos desde `firewall/states`
-- Documentación bilingüe actualizada con hallazgos de compatibilidad reales
+- English-first repository document layout: `README.md`, `TODO.md`, and `CHANGELOG.md` are now the canonical English docs, with Spanish variants in `README.es.md`, `TODO.es.md`, and `CHANGELOG.es.md`
+- `TELEGRAM.md` documenting the recommended workflow for using PfChat through OpenClaw on Telegram
+- Documentation for the daily email summary use case through OpenClaw + Resend
+- `pfchat/scripts/send_daily_summary.py` to generate and send the daily summary email
+- Operational support for OpenClaw Gateway-inherited global variables through `EnvironmentFile`
+- Preference for device names over raw IPs in reports, using local inventory and reverse lookup as fallback
+- Integration of upstream pfrest findings and the live OpenAPI schema exposed by the local instance
+- Automatic discovery of supported capabilities from `/api/v2/schema/openapi`
+- Initial query-filter support in `connections` and `rules`
+- Explicit skill coverage for WAN address / firewall public IP questions, including Spanish phrasing
+- Config fallback to the project-local `pfchat/.env` based on script path for invocations from other channels/contexts
+- Real-world compatibility adjustments validated against a pfSense installation in this environment
+- `health` fallback to `status/system` when `system/stats` is unavailable
+- Degraded `devices` mode when ARP/DHCP endpoints are not exposed, inferring internal hosts from `firewall/states`
+- Updated bilingual documentation with real compatibility findings
 
-### Corregido
+### Fixed
 
-- `total_active_connections` ahora refleja la cantidad real devuelta
-- El fallback de logs ya no oculta errores reales de TLS, auth o conectividad detrás de un falso "endpoint not found"
-- El snapshot ahora devuelve conteos consistentes para conexiones, logs y reglas
+- `total_active_connections` now reflects the actual returned count
+- Log endpoint fallback no longer hides real TLS, auth, or connectivity failures behind a false "endpoint not found"
+- Snapshot output now returns consistent counts for connections, logs, and rules
 
 ## [0.1.0] - 2026-03-13
 
-### Añadido
+### Added
 
-- Primera versión de la skill `PfChat` para OpenClaw
-- Cliente reutilizable de pfSense REST API en `pfchat/scripts/pfsense_client.py`
-- CLI auxiliar `pfchat/scripts/pfchat_query.py`
-- Soporte para consultas en vivo de:
-  - dispositivos conectados
-  - conexiones activas
-  - logs recientes del firewall
+- Initial `PfChat` skill for OpenClaw
+- Reusable pfSense REST API client in `pfchat/scripts/pfsense_client.py`
+- Helper CLI in `pfchat/scripts/pfchat_query.py`
+- Live query support for:
+  - connected devices
+  - active connections
+  - recent firewall logs
   - interfaces
-  - salud del sistema y gateways
-  - reglas del firewall
-  - snapshot combinado
-- Referencias de endpoints y patrones de investigación en `pfchat/references/`
-- Artefacto empaquetado `dist/pfchat.skill`
-- Estructura de repositorio lista para GitHub
-- Documentación bilingüe inicial
+  - system and gateway health
+  - firewall rules
+  - combined snapshot output
+- Endpoint notes and investigation patterns under `pfchat/references/`
+- Packaged `dist/pfchat.skill` artifact
+- GitHub-ready repository structure
+- Initial bilingual documentation
 
-### Cambiado
+### Changed
 
-- El proyecto original fue adaptado para OpenClaw
-- El workflow quedó agnóstico al modelo y ya no depende de un SDK de proveedor específico para el flujo principal
+- The original project was adapted for OpenClaw
+- The workflow is now model-agnostic and no longer depends on a provider-specific SDK for the main path
 
-### Notas
+### Notes
 
-- El foco de esta versión es el workflow live/API
-- El análisis offline de logs no está incluido en esta skill
+- This release focuses on the live/API workflow
+- Offline log analysis is not included in this skill

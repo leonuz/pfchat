@@ -1,33 +1,33 @@
 # TODO — PfChat
 
-Pendientes del proyecto, organizados por prioridad.
+Project backlog, organized by priority.
 
-## Alta prioridad
+## High priority
 
-- [x] Cargar/configurar `RESEND_API_KEY` en el entorno para activar el envío real del resumen diario por correo
-- [ ] Añadir soporte opcional para CA custom (`PFSENSE_CA_FILE`) y así validar certificados sin usar `PFSENSE_VERIFY_SSL=false`  ← pendiente solicitado, no implementar todavía
-- [x] Añadir descubrimiento opcional de endpoints desde `/api/v2/schema/openapi` y cachear capacidades soportadas
-- [ ] Añadir cache persistente opcional del schema OpenAPI para reducir fetches repetidos
-- [ ] Afinar la inferencia de dispositivos cuando ARP/DHCP no estén expuestos por la API
-- [ ] Añadir filtros por host/IP/puerto para reducir ruido en `connections` y `logs`
-- [ ] Añadir pruebas unitarias para `pfsense_client.py` y `pfchat_query.py`
-- [ ] Añadir pruebas de integración con respuestas mockeadas de pfSense
-- [ ] Documentar mejor la estructura de salida de cada comando
+- [x] Load/configure `RESEND_API_KEY` in the environment to enable actual delivery of the daily email summary
+- [ ] Add optional custom CA support (`PFSENSE_CA_FILE`) so certificates can be validated without relying on `PFSENSE_VERIFY_SSL=false`  ← requested, but do not implement yet
+- [x] Add optional endpoint discovery from `/api/v2/schema/openapi` and cache supported capabilities
+- [ ] Add optional persistent caching of the OpenAPI schema to reduce repeated fetches
+- [ ] Refine device inference when ARP/DHCP endpoints are not exposed by the API
+- [ ] Add host/IP/port filters to reduce noise in `connections` and `logs`
+- [ ] Add unit tests for `pfsense_client.py` and `pfchat_query.py`
+- [ ] Add integration tests using mocked pfSense responses
+- [ ] Better document the output shape for each command
 
-## Prioridad media
+## Medium priority
 
-- [ ] Añadir un workflow documentado y automatizable de resúmenes/alertas vía Telegram sobre OpenClaw
-- [ ] Descubrir más variantes reales de endpoints del paquete REST API de pfSense
-- [ ] Añadir modo `--once` o presets orientados a automatización
-- [ ] Mejorar el snapshot para resumir hallazgos de forma más compacta
-- [ ] Añadir ejemplos reales de investigación en `references/`
-- [ ] Evaluar soporte para múltiples LAN/VLAN en inventario de dispositivos
-- [ ] Añadir validación más estricta del archivo `.env`
+- [ ] Add a documented and automatable Telegram summary/alert workflow on top of OpenClaw
+- [ ] Discover more real-world pfSense REST API endpoint variants
+- [ ] Add a `--once` mode or automation-oriented presets
+- [ ] Improve snapshot output to summarize findings more compactly
+- [ ] Add real investigation examples under `references/`
+- [ ] Evaluate support for multiple LAN/VLAN segments in device inventory
+- [ ] Add stricter `.env` validation
 
-## Prioridad baja
+## Low priority
 
-- [ ] Soporte para exportar reportes Markdown/HTML
-- [ ] Posible empaquetado adicional para distribución fuera de OpenClaw
-- [ ] Enriquecimiento opcional de IPs externas con GeoIP o ASN
-- [ ] Compatibilidad exploratoria con pfSense Plus y OPNsense
-- [ ] Plantillas de reportes operativos y de security review
+- [ ] Support Markdown/HTML report export
+- [ ] Consider additional packaging for distribution outside OpenClaw
+- [ ] Optional external IP enrichment with GeoIP or ASN data
+- [ ] Exploratory compatibility with pfSense Plus and OPNsense
+- [ ] Templates for operational and security review reports
