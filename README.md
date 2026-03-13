@@ -19,6 +19,73 @@ It is model-agnostic: the skill fetches live data from pfSense and lets the curr
 - Build a live snapshot for security triage
 - Discover supported capabilities from the live OpenAPI schema
 
+## Prerequisites on pfSense
+
+Before PfChat can work, the pfSense REST API package must already be installed and accessible on the firewall.
+
+### 1. Install the pfSense REST API package
+
+PfChat depends on the upstream **pfSense-pkg-RESTAPI** package.
+
+Official references:
+- pfrest installation guide: <https://pfrest.org/INSTALL_AND_CONFIG/>
+- pfrest authentication guide: <https://pfrest.org/AUTHENTICATION_AND_AUTHORIZATION/>
+- pfrest Swagger/OpenAPI guide: <https://pfrest.org/SWAGGER_AND_OPENAPI/>
+- upstream repository: <https://github.com/pfrest/pfSense-pkg-RESTAPI>
+- practical video reference used during this project: <https://www.youtube.com/watch?v=inqMEOEVtao>
+
+Typical install commands from the upstream docs:
+
+Install on pfSense CE:
+
+```bash
+pkg-static add https://github.com/pfrest/pfSense-pkg-RESTAPI/releases/latest/download/pfSense-2.8.1-pkg-RESTAPI.pkg
+```
+
+Install on pfSense Plus:
+
+```bash
+pkg-static -C /dev/null add https://github.com/pfrest/pfSense-pkg-RESTAPI/releases/latest/download/pfSense-25.11-pkg-RESTAPI.pkg
+```
+
+Important notes:
+- Choose the package build that matches your pfSense version.
+- After pfSense upgrades, unofficial packages may be removed, so the REST API package may need to be reinstalled.
+- PfChat has been validated in this project against a real pfSense installation exposing `/api/v2/schema/openapi`.
+
+### 2. Configure the REST API in pfSense
+
+After installation, verify these items in pfSense:
+
+- `System -> REST API` is present in the webConfigurator
+- the REST API is enabled/configured as needed
+- your chosen authentication method is allowed
+- the account used for the API key has the privileges needed for the endpoints you want to query
+
+### 3. Create an API key
+
+PfChat uses **API key authentication** by default through the `X-API-Key` header.
+
+According to upstream docs, API keys can be created from:
+- `System -> REST API -> Keys`
+
+Important notes:
+- API keys inherit the privileges of the user that created them.
+- Treat the API key like a secret.
+- If the key is ever exposed, revoke it and create a new one.
+
+### 4. Verify the API before using PfChat
+
+Useful checks before blaming PfChat:
+
+- confirm the API responds at `https://<pfsense>/api/v2/...`
+- confirm your API key works
+- confirm the live OpenAPI schema is reachable:
+  - `/api/v2/schema/openapi`
+- confirm the endpoints you care about exist in that schema
+
+If `/api/v2/schema/openapi` works, PfChat can use schema-aware discovery and adapt better to that installation.
+
 ## Quick start
 
 ### 1. Configure pfSense access
