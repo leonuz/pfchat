@@ -25,6 +25,7 @@ All notable changes to this project will be documented in this file.
 - Mocked integration tests covering device inventory and snapshot flows without requiring a live pfSense instance
 - `--once` automation presets and reduced `--view` rendering for compact workflows
 - Better degraded device inference from firewall states, including interfaces, peer counts, and confidence hints
+- Expanded endpoint-variant notes from the live schema, including singular/plural, status/config, and service/status route families
 - Explicit skill coverage for WAN address / firewall public IP questions, including Spanish phrasing
 - Config fallback to the project-local `pfchat/.env` based on script path for invocations from other channels/contexts
 - Real-world compatibility adjustments validated against a pfSense installation in this environment

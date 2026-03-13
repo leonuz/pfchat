@@ -17,7 +17,7 @@ Pendientes del proyecto, organizados por prioridad.
 ## Prioridad media
 
 - [ ] Añadir un workflow documentado y automatizable de resúmenes/alertas vía Telegram sobre OpenClaw
-- [ ] Descubrir más variantes reales de endpoints del paquete REST API de pfSense
+- [x] Descubrir más variantes reales de endpoints del paquete REST API de pfSense
 - [x] Añadir modo `--once` o presets orientados a automatización
 - [x] Mejorar el snapshot para resumir hallazgos de forma más compacta
 - [x] Añadir ejemplos reales de investigación en `references/`

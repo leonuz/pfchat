@@ -17,7 +17,7 @@ Project backlog, organized by priority.
 ## Medium priority
 
 - [ ] Add a documented and automatable Telegram summary/alert workflow on top of OpenClaw
-- [ ] Discover more real-world pfSense REST API endpoint variants
+- [x] Discover more real-world pfSense REST API endpoint variants
 - [x] Add a `--once` mode or automation-oriented presets
 - [x] Improve snapshot output to summarize findings more compactly
 - [x] Add real investigation examples under `references/`

@@ -43,6 +43,8 @@ Use these endpoint groups when querying pfSense through `scripts/pfchat_query.py
 ## Notes
 
 - Different pfSense REST API package versions expose different route sets.
+- Many resources have both singular and plural route variants (for example `firewall/rule` and `firewall/rules`). PfChat should prefer the plural read endpoints for inspection workflows.
+- Status endpoints and config endpoints are different things. For inspection, prefer `status/*` routes when available.
 - Self-signed certificates are common on pfSense. `PFSENSE_VERIFY_SSL=false` keeps HTTPS enabled and only skips certificate trust validation.
 - Do not assume every field is present in every response. Some endpoints differ across versions and packages.
 - If one endpoint fails during `snapshot`, continue with the others and report partial results.

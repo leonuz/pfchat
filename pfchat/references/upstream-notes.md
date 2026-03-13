@@ -49,11 +49,42 @@ Relevant paths discovered for PfChat:
 - `/api/v2/status/interfaces`
 - `/api/v2/status/gateways`
 - `/api/v2/routing/gateways`
+- `/api/v2/interface`
+- `/api/v2/interfaces`
+
+### Logs / focused status endpoints
+- `/api/v2/status/logs/firewall`
+- `/api/v2/status/logs/system`
+- `/api/v2/status/logs/auth`
+- `/api/v2/status/logs/dhcp`
+- `/api/v2/status/logs/openvpn`
+- `/api/v2/status/logs/packages/restapi`
+
+### Routing / network config endpoints worth tracking
+- `/api/v2/routing/gateway`
+- `/api/v2/routing/gateway/group`
+- `/api/v2/routing/static_route`
+- `/api/v2/interface/vlan`
+- `/api/v2/interface/group`
+- `/api/v2/interface/bridge`
 
 ### REST API self-management
 - `/api/v2/system/restapi/settings`
 - `/api/v2/system/restapi/version`
 - `/api/v2/status/logs/packages/restapi`
+
+## Real schema compatibility notes
+
+The local schema shows a useful pattern for future compatibility work:
+
+- many resources expose both singular and plural endpoints
+  - examples: `firewall/rule` + `firewall/rules`, `routing/gateway` + `routing/gateways`, `interface` + `interfaces`
+- status endpoints and config endpoints are distinct
+  - examples: `status/gateways` vs `routing/gateways`, `status/interfaces` vs `interfaces`
+- service configuration and service status are also distinct
+  - examples: `services/dhcp_server/*` vs `status/dhcp_server/leases`
+
+For future releases, PfChat should keep preferring read-only status endpoints for live inspection, while documenting config endpoints separately for administrative write actions.
 
 ## Recommended PfChat follow-up work
 
