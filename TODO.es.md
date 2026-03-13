@@ -10,7 +10,7 @@ Pendientes del proyecto, organizados por prioridad.
 - [x] Añadir cache persistente opcional del schema OpenAPI para reducir fetches repetidos
 - [ ] Afinar la inferencia de dispositivos cuando ARP/DHCP no estén expuestos por la API
 - [x] Añadir filtros por host/IP/puerto para reducir ruido en `connections` y `logs`
-- [ ] Añadir pruebas unitarias para `pfsense_client.py` y `pfchat_query.py`
+- [x] Añadir pruebas unitarias para `pfsense_client.py` y `pfchat_query.py`
 - [ ] Añadir pruebas de integración con respuestas mockeadas de pfSense
 - [x] Documentar mejor la estructura de salida de cada comando
 

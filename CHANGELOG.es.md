@@ -19,6 +19,7 @@ Todos los cambios relevantes de este proyecto se documentan aquí.
 - `references/output-shapes.md` documentando la forma del JSON devuelto por cada comando
 - `references/investigation-examples.md` con workflows concretos para WAN, tráfico bloqueado, top talkers y revisión de reglas
 - Cache persistente local del OpenAPI schema para reducir fetches repetidos de descubrimiento
+- Suite inicial de `unittest` para `pfsense_client.py` y `pfchat_query.py`
 - Cobertura explícita en la skill para preguntas sobre dirección WAN / IP pública del firewall, también en español
 - Fallback de configuración al archivo `pfchat/.env` basado en la ruta del script, para invocaciones desde otros canales/contextos
 - Compatibilidad real con una instalación de pfSense validada en este entorno

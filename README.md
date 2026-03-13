@@ -234,6 +234,14 @@ On this host, the correct way for cron jobs and isolated sessions to inherit glo
 
 PfChat reports should prefer device names from the local inventory (`TOOLS.md`). If no local mapping exists, they may use reverse lookup and keep the IP only as fallback detail.
 
+## Tests
+
+Run the current test suite with the Python standard library:
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
 ## Reference docs
 
 Additional reference material:

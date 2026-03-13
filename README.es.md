@@ -234,6 +234,14 @@ En este host, la forma correcta de que cron jobs y sesiones aisladas hereden var
 
 Los reportes de PfChat deben preferir nombres de dispositivos tomados del inventario local (`TOOLS.md`). Si no existe mapping local, pueden usar reverse lookup y dejar la IP como respaldo.
 
+## Tests
+
+Ejecuta la suite actual con la librería estándar de Python:
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
 ## Documentos de referencia
 
 Material adicional de referencia:
