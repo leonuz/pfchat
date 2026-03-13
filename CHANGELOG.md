@@ -22,6 +22,7 @@ All notable changes to this project will be documented in this file.
 - Initial `unittest` suite for `pfsense_client.py` and `pfchat_query.py`
 - Stricter `.env` validation for host, API key, and boolean SSL settings
 - Compact snapshot `summary` section for WAN, gateways, top devices, top flows, blocked log counts, and highlights
+- Mocked integration tests covering device inventory and snapshot flows without requiring a live pfSense instance
 - Explicit skill coverage for WAN address / firewall public IP questions, including Spanish phrasing
 - Config fallback to the project-local `pfchat/.env` based on script path for invocations from other channels/contexts
 - Real-world compatibility adjustments validated against a pfSense installation in this environment

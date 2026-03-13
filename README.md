@@ -246,6 +246,10 @@ Run the current test suite with the Python standard library:
 python3 -m unittest discover -s tests -v
 ```
 
+The suite includes:
+- unit tests for parsing, config validation, schema caching, and summary logic
+- mocked integration tests for device inventory and snapshot flows without requiring a live pfSense instance
+
 ## Reference docs
 
 Additional reference material:

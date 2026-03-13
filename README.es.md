@@ -246,6 +246,10 @@ Ejecuta la suite actual con la librería estándar de Python:
 python3 -m unittest discover -s tests -v
 ```
 
+La suite incluye:
+- pruebas unitarias para parsing, validación de config, cache de schema y lógica de summary
+- pruebas de integración mockeadas para inventario de dispositivos y flujo de snapshot sin depender de un pfSense vivo
+
 ## Documentos de referencia
 
 Material adicional de referencia:

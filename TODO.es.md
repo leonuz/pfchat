@@ -11,7 +11,7 @@ Pendientes del proyecto, organizados por prioridad.
 - [ ] Afinar la inferencia de dispositivos cuando ARP/DHCP no estén expuestos por la API
 - [x] Añadir filtros por host/IP/puerto para reducir ruido en `connections` y `logs`
 - [x] Añadir pruebas unitarias para `pfsense_client.py` y `pfchat_query.py`
-- [ ] Añadir pruebas de integración con respuestas mockeadas de pfSense
+- [x] Añadir pruebas de integración con respuestas mockeadas de pfSense
 - [x] Documentar mejor la estructura de salida de cada comando
 
 ## Prioridad media
@@ -19,7 +19,7 @@ Pendientes del proyecto, organizados por prioridad.
 - [ ] Añadir un workflow documentado y automatizable de resúmenes/alertas vía Telegram sobre OpenClaw
 - [ ] Descubrir más variantes reales de endpoints del paquete REST API de pfSense
 - [ ] Añadir modo `--once` o presets orientados a automatización
-- [ ] Mejorar el snapshot para resumir hallazgos de forma más compacta
+- [x] Mejorar el snapshot para resumir hallazgos de forma más compacta
 - [ ] Añadir ejemplos reales de investigación en `references/`
 - [ ] Evaluar soporte para múltiples LAN/VLAN en inventario de dispositivos
 - [x] Añadir validación más estricta del archivo `.env`

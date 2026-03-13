@@ -11,7 +11,7 @@ Project backlog, organized by priority.
 - [ ] Refine device inference when ARP/DHCP endpoints are not exposed by the API
 - [x] Add host/IP/port filters to reduce noise in `connections` and `logs`
 - [x] Add unit tests for `pfsense_client.py` and `pfchat_query.py`
-- [ ] Add integration tests using mocked pfSense responses
+- [x] Add integration tests using mocked pfSense responses
 - [x] Better document the output shape for each command
 
 ## Medium priority
@@ -19,7 +19,7 @@ Project backlog, organized by priority.
 - [ ] Add a documented and automatable Telegram summary/alert workflow on top of OpenClaw
 - [ ] Discover more real-world pfSense REST API endpoint variants
 - [ ] Add a `--once` mode or automation-oriented presets
-- [ ] Improve snapshot output to summarize findings more compactly
+- [x] Improve snapshot output to summarize findings more compactly
 - [ ] Add real investigation examples under `references/`
 - [ ] Evaluate support for multiple LAN/VLAN segments in device inventory
 - [x] Add stricter `.env` validation
