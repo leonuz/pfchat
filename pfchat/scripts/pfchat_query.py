@@ -22,7 +22,7 @@ from pfsense_client import PfSenseClient
 
 
 FILTERLOG_RE = re.compile(
-    r"^[^:]+:\s*(?P<rule>\d*),(?P<subrule>[^,]*),(?P<anchor>[^,]*),(?P<tracker>[^,]*),(?P<interface>[^,]*),(?P<reason>[^,]*),(?P<action>[^,]*),(?P<direction>[^,]*),(?P<ipver>[^,]*),(?P<tos>[^,]*),(?P<ecn>[^,]*),(?P<ttl>[^,]*),(?P<protocol_text>[^,]*),(?P<protocol_id>[^,]*),(?P<length>[^,]*),(?P<src>[^,]*),(?P<dst>[^,]*)(?:,(?P<src_port>[^,]*),(?P<dst_port>[^,]*).*)?$"
+    r"(?P<rule>\d*),(?P<subrule>[^,]*),(?P<anchor>[^,]*),(?P<tracker>[^,]*),(?P<interface>[^,]*),(?P<reason>[^,]*),(?P<action>[^,]*),(?P<direction>[^,]*),(?P<ipver>[^,]*),(?P<tos>[^,]*),(?P<ecn>[^,]*),(?P<ttl>[^,]*),(?P<protocol_text>[^,]*),(?P<protocol_id>[^,]*),(?P<length>[^,]*),(?P<src>[^,]*),(?P<dst>[^,]*)(?:,(?P<src_port>[^,]*),(?P<dst_port>[^,]*).*)?$"
 )
 
 
@@ -80,7 +80,11 @@ def build_connection_filters(args: argparse.Namespace, base_filters: dict[str, A
 
 
 def parse_filterlog_entry(text: str) -> dict[str, str]:
-    match = FILTERLOG_RE.search(text)
+    marker = 'filterlog['
+    if marker not in text or ': ' not in text:
+        return {}
+    payload = text.split(': ', 1)[1]
+    match = FILTERLOG_RE.search(payload)
     if not match:
         return {}
     parsed = {key: (value or "") for key, value in match.groupdict().items()}
