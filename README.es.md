@@ -18,6 +18,7 @@ Es agnóstica al modelo: la skill obtiene datos vivos desde pfSense y deja el an
 - Revisa reglas del firewall
 - Genera un snapshot útil para triage de seguridad
 - Descubre capacidades soportadas desde el OpenAPI schema en vivo
+- Cachea localmente el OpenAPI schema para reducir fetches repetidos
 
 ## Prerrequisitos en pfSense
 

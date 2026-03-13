@@ -7,7 +7,7 @@ Project backlog, organized by priority.
 - [x] Load/configure `RESEND_API_KEY` in the environment to enable actual delivery of the daily email summary
 - [ ] Add optional custom CA support (`PFSENSE_CA_FILE`) so certificates can be validated without relying on `PFSENSE_VERIFY_SSL=false`  ← requested, but do not implement yet
 - [x] Add optional endpoint discovery from `/api/v2/schema/openapi` and cache supported capabilities
-- [ ] Add optional persistent caching of the OpenAPI schema to reduce repeated fetches
+- [x] Add optional persistent caching of the OpenAPI schema to reduce repeated fetches
 - [ ] Refine device inference when ARP/DHCP endpoints are not exposed by the API
 - [x] Add host/IP/port filters to reduce noise in `connections` and `logs`
 - [ ] Add unit tests for `pfsense_client.py` and `pfchat_query.py`

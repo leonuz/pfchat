@@ -7,7 +7,7 @@ Pendientes del proyecto, organizados por prioridad.
 - [x] Cargar/configurar `RESEND_API_KEY` en el entorno para activar el envío real del resumen diario por correo
 - [ ] Añadir soporte opcional para CA custom (`PFSENSE_CA_FILE`) y así validar certificados sin usar `PFSENSE_VERIFY_SSL=false`  ← pendiente solicitado, no implementar todavía
 - [x] Añadir descubrimiento opcional de endpoints desde `/api/v2/schema/openapi` y cachear capacidades soportadas
-- [ ] Añadir cache persistente opcional del schema OpenAPI para reducir fetches repetidos
+- [x] Añadir cache persistente opcional del schema OpenAPI para reducir fetches repetidos
 - [ ] Afinar la inferencia de dispositivos cuando ARP/DHCP no estén expuestos por la API
 - [x] Añadir filtros por host/IP/puerto para reducir ruido en `connections` y `logs`
 - [ ] Añadir pruebas unitarias para `pfsense_client.py` y `pfchat_query.py`

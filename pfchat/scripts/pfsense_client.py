@@ -3,12 +3,15 @@
 
 from __future__ import annotations
 
+import hashlib
 import ipaddress
 import json
 import ssl
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from pathlib import Path
 from typing import Any
 
 
@@ -16,7 +19,8 @@ class PfSenseClient:
     """Thin wrapper around the pfSense REST API with endpoint fallbacks and schema-aware discovery."""
 
     def __init__(self, host: str, api_key: str, verify_ssl: bool = False):
-        self.base_url = f"https://{host.rstrip('/')}/api/v2"
+        self.host = host.rstrip('/')
+        self.base_url = f"https://{self.host}/api/v2"
         self.api_key = api_key
         self.ssl_ctx = ssl.create_default_context()
         if not verify_ssl:
@@ -24,6 +28,37 @@ class PfSenseClient:
             self.ssl_ctx.verify_mode = ssl.CERT_NONE
         self._openapi_schema: dict[str, Any] | None = None
         self._supported_paths: set[str] | None = None
+        self._cache_ttl_seconds = 3600
+        self._cache_dir = Path(__file__).resolve().parents[1] / '.cache'
+        self._cache_dir.mkdir(parents=True, exist_ok=True)
+
+    def _schema_cache_path(self) -> Path:
+        digest = hashlib.sha256(f'{self.host}|{self.base_url}'.encode()).hexdigest()[:16]
+        return self._cache_dir / f'openapi-schema-{digest}.json'
+
+    def _read_cached_schema(self) -> dict[str, Any] | None:
+        path = self._schema_cache_path()
+        if not path.exists():
+            return None
+        try:
+            payload = json.loads(path.read_text(encoding='utf-8'))
+        except Exception:
+            return None
+        fetched_at = payload.get('fetched_at')
+        schema = payload.get('schema')
+        if not isinstance(fetched_at, (int, float)) or not isinstance(schema, dict):
+            return None
+        if time.time() - fetched_at > self._cache_ttl_seconds:
+            return None
+        return schema
+
+    def _write_cached_schema(self, schema: dict[str, Any]) -> None:
+        payload = {
+            'fetched_at': time.time(),
+            'host': self.host,
+            'schema': schema,
+        }
+        self._schema_cache_path().write_text(json.dumps(payload, indent=2), encoding='utf-8')
 
     def _get(self, path: str, params: dict[str, Any] | None = None) -> Any:
         url = f"{self.base_url}/{path.lstrip('/')}"
@@ -56,7 +91,14 @@ class PfSenseClient:
     def get_openapi_schema(self, force_refresh: bool = False) -> dict[str, Any]:
         """Fetch and cache the live OpenAPI schema when available."""
         if self._openapi_schema is None or force_refresh:
-            self._openapi_schema = self._unwrap(self._get("schema/openapi"))
+            schema: dict[str, Any] | None = None
+            if not force_refresh:
+                schema = self._read_cached_schema()
+            if schema is None:
+                schema = self._unwrap(self._get("schema/openapi"))
+                if isinstance(schema, dict):
+                    self._write_cached_schema(schema)
+            self._openapi_schema = schema
             paths = self._openapi_schema.get("paths", {}) if isinstance(self._openapi_schema, dict) else {}
             self._supported_paths = {
                 path.removeprefix("/api/v2/").lstrip("/")
@@ -256,6 +298,11 @@ class PfSenseClient:
         return {
             "openapi_available": bool(supported),
             "supported_paths": supported,
+            "schema_cache": {
+                "path": str(self._schema_cache_path()),
+                "ttl_seconds": self._cache_ttl_seconds,
+                "exists": self._schema_cache_path().exists(),
+            },
             "capabilities": {
                 "devices_arp": any(path in supported for path in ["diagnostics/arp_table", "status/arp", "status/arp-table", "diag/arp", "diagnostics/arp"]),
                 "devices_dhcp": any(path in supported for path in ["status/dhcp_server/leases", "services/dhcpd/leases", "status/dhcp_leases", "status/dhcp/leases"]),
