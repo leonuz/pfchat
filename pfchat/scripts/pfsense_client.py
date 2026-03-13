@@ -204,7 +204,6 @@ class PfSenseClient:
         return value
 
     def _infer_connected_devices_from_states(self, limit: int = 500) -> dict[str, Any]:
-        """Build a lightweight device inventory from active firewall states when ARP/DHCP endpoints are unavailable."""
         states = self.get_firewall_states(limit=limit)
         devices: dict[str, dict[str, Any]] = {}
 
@@ -243,8 +242,7 @@ class PfSenseClient:
         try:
             arp = self.get_arp_table()
         except RuntimeError as arp_error:
-            arp_message = str(arp_error)
-            if arp_message.startswith("HTTP 404 on "):
+            if str(arp_error).startswith("HTTP 404 on "):
                 return self._infer_connected_devices_from_states()
             raise
 
@@ -315,29 +313,99 @@ class PfSenseClient:
             },
         }
 
+    def summarize_snapshot(self, snapshot: dict[str, Any], top_n: int = 5) -> dict[str, Any]:
+        health = snapshot.get('health', {}) if isinstance(snapshot, dict) else {}
+        gateways = health.get('gateways', []) if isinstance(health, dict) else []
+        interfaces = health.get('interfaces', []) if isinstance(health, dict) else []
+        devices = snapshot.get('devices', {}).get('devices', []) if isinstance(snapshot.get('devices', {}), dict) else []
+        logs = snapshot.get('logs', {}).get('logs', []) if isinstance(snapshot.get('logs', {}), dict) else []
+        connections = snapshot.get('connections', {}).get('connections', []) if isinstance(snapshot.get('connections', {}), dict) else []
+
+        wan = next((item for item in interfaces if str(item.get('name', '')).lower() == 'wan'), None)
+        online_gateways = [gw.get('name') for gw in gateways if str(gw.get('status', '')).lower() == 'online']
+        blocked_logs = [item for item in logs if 'block' in str(item.get('text', '')).lower()]
+        top_devices = sorted(
+            devices,
+            key=lambda d: int(d.get('seen_in_states', 0) or 0),
+            reverse=True,
+        )[:top_n]
+        top_flows = sorted(
+            connections,
+            key=lambda c: int(c.get('bytes_total', 0) or 0),
+            reverse=True,
+        )[:top_n]
+
+        highlights: list[str] = []
+        if wan:
+            highlights.append(
+                f"WAN {wan.get('ipaddr')} via {wan.get('gateway')} is {wan.get('status')}"
+            )
+        if online_gateways:
+            highlights.append(f"Online gateways: {', '.join(str(x) for x in online_gateways)}")
+        if top_devices:
+            device_names = [
+                str(d.get('hostname') or d.get('ip') or d.get('ip_address') or '(unknown)')
+                for d in top_devices[:3]
+            ]
+            highlights.append(f"Top active devices: {', '.join(device_names)}")
+        if blocked_logs:
+            highlights.append(f"Blocked log entries in sample: {len(blocked_logs)}")
+        if snapshot.get('errors'):
+            highlights.append(f"Partial data warnings: {len(snapshot['errors'])}")
+
+        return {
+            'wan': {
+                'ipaddr': wan.get('ipaddr') if wan else None,
+                'gateway': wan.get('gateway') if wan else None,
+                'status': wan.get('status') if wan else None,
+            },
+            'gateway_status': {
+                'online': online_gateways,
+                'total': len(gateways),
+            },
+            'device_summary': {
+                'total_devices': snapshot.get('devices', {}).get('total_devices') if isinstance(snapshot.get('devices', {}), dict) else None,
+                'degraded': snapshot.get('devices', {}).get('degraded') if isinstance(snapshot.get('devices', {}), dict) else None,
+                'top_active_devices': top_devices,
+            },
+            'connection_summary': {
+                'total_active_connections': snapshot.get('connections', {}).get('total_active_connections') if isinstance(snapshot.get('connections', {}), dict) else None,
+                'top_flows': top_flows,
+            },
+            'log_summary': {
+                'total_entries': snapshot.get('logs', {}).get('total_entries') if isinstance(snapshot.get('logs', {}), dict) else None,
+                'blocked_entries_in_sample': len(blocked_logs),
+            },
+            'rule_summary': {
+                'total_rules': snapshot.get('rules', {}).get('total_rules') if isinstance(snapshot.get('rules', {}), dict) else None,
+            },
+            'highlights': highlights,
+        }
+
     def get_snapshot(self, limit: int = 150) -> dict[str, Any]:
-        snapshot: dict[str, Any] = {"errors": {}}
+        snapshot: dict[str, Any] = {'errors': {}}
 
         for key, func in {
-            "capabilities": self.get_capabilities,
-            "devices": self.get_connected_devices,
-            "connections": lambda: {
-                "total_active_connections": len(self.get_firewall_states(limit=limit)),
-                "connections": self.get_firewall_states(limit=limit),
+            'capabilities': self.get_capabilities,
+            'devices': self.get_connected_devices,
+            'connections': lambda: {
+                'total_active_connections': len(self.get_firewall_states(limit=limit)),
+                'connections': self.get_firewall_states(limit=limit),
             },
-            "logs": lambda: {
-                "total_entries": len(self.get_firewall_logs(limit=limit)),
-                "logs": self.get_firewall_logs(limit=limit),
+            'logs': lambda: {
+                'total_entries': len(self.get_firewall_logs(limit=limit)),
+                'logs': self.get_firewall_logs(limit=limit),
             },
-            "health": self.get_health_bundle,
-            "rules": lambda: {
-                "total_rules": len(self.get_firewall_rules()),
-                "rules": self.get_firewall_rules(),
+            'health': self.get_health_bundle,
+            'rules': lambda: {
+                'total_rules': len(self.get_firewall_rules()),
+                'rules': self.get_firewall_rules(),
             },
         }.items():
             try:
                 snapshot[key] = func()
             except Exception as exc:
-                snapshot["errors"][key] = str(exc)
+                snapshot['errors'][key] = str(exc)
 
+        snapshot['summary'] = self.summarize_snapshot(snapshot)
         return snapshot

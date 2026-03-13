@@ -210,6 +210,15 @@ Top-level shape:
 ```json
 {
   "errors": {},
+  "summary": {
+    "wan": {"ipaddr": "142.197.33.220", "gateway": "142.197.33.1", "status": "up"},
+    "gateway_status": {"online": ["WAN_DHCP"], "total": 1},
+    "device_summary": {"total_devices": 34, "degraded": false, "top_active_devices": [ ... ]},
+    "connection_summary": {"total_active_connections": 120, "top_flows": [ ... ]},
+    "log_summary": {"total_entries": 150, "blocked_entries_in_sample": 24},
+    "rule_summary": {"total_rules": 12},
+    "highlights": ["WAN 142.197.33.220 via 142.197.33.1 is up"]
+  },
   "capabilities": { ... },
   "devices": { ... },
   "connections": { ... },
@@ -220,3 +229,4 @@ Top-level shape:
 ```
 
 If one subsection fails, PfChat should keep the others when possible and record the failure under `errors`.
+The `summary` block is meant to be the first compact layer for Telegram, email summaries, and fast triage.

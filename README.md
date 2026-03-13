@@ -17,6 +17,7 @@ It is model-agnostic: the skill fetches live data from pfSense and lets the curr
 - Check interface, gateway, and system status
 - Review firewall rules
 - Build a live snapshot for security triage
+- Add a compact `summary` layer inside snapshots for faster answers and reports
 - Discover supported capabilities from the live OpenAPI schema
 - Cache the OpenAPI schema locally to reduce repeated fetches
 

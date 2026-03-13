@@ -59,6 +59,43 @@ class PfSenseClientTests(unittest.TestCase):
         self.assertTrue(caps['capabilities']['devices_arp'])
         self.assertTrue(caps['capabilities']['devices_dhcp'])
 
+    def test_summarize_snapshot_builds_highlights(self) -> None:
+        snapshot = {
+            'errors': {},
+            'devices': {
+                'total_devices': 2,
+                'degraded': False,
+                'devices': [
+                    {'hostname': 'iphoneLeo', 'seen_in_states': 8},
+                    {'hostname': 'tvsala', 'seen_in_states': 5},
+                ],
+            },
+            'connections': {
+                'total_active_connections': 2,
+                'connections': [
+                    {'source': '192.168.0.95:1234', 'destination': '17.1.1.1:443', 'bytes_total': 5000},
+                    {'source': '192.168.0.52:1234', 'destination': '3.3.3.3:443', 'bytes_total': 3000},
+                ],
+            },
+            'logs': {
+                'total_entries': 2,
+                'logs': [
+                    {'text': '... block ...'},
+                    {'text': '... pass ...'},
+                ],
+            },
+            'health': {
+                'gateways': [{'name': 'WAN_DHCP', 'status': 'online'}],
+                'interfaces': [{'name': 'wan', 'ipaddr': '142.197.33.220', 'gateway': '142.197.33.1', 'status': 'up'}],
+            },
+            'rules': {'total_rules': 10, 'rules': []},
+        }
+        summary = self.client.summarize_snapshot(snapshot)
+        self.assertEqual(summary['wan']['ipaddr'], '142.197.33.220')
+        self.assertEqual(summary['gateway_status']['online'], ['WAN_DHCP'])
+        self.assertEqual(summary['log_summary']['blocked_entries_in_sample'], 1)
+        self.assertTrue(summary['highlights'])
+
     @patch.object(PfSenseClient, 'get_firewall_states')
     def test_infer_connected_devices_from_states(self, mock_states: MagicMock) -> None:
         mock_states.return_value = [

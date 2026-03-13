@@ -17,6 +17,7 @@ Es agnóstica al modelo: la skill obtiene datos vivos desde pfSense y deja el an
 - Verifica estado de interfaces, gateways y sistema
 - Revisa reglas del firewall
 - Genera un snapshot útil para triage de seguridad
+- Añade una capa compacta de `summary` dentro del snapshot para respuestas y reportes más rápidos
 - Descubre capacidades soportadas desde el OpenAPI schema en vivo
 - Cachea localmente el OpenAPI schema para reducir fetches repetidos
 
