@@ -27,12 +27,12 @@ Antes de que PfChat pueda funcionar, el paquete REST API de pfSense debe estar i
 
 PfChat depende del paquete upstream **pfSense-pkg-RESTAPI**.
 
-Referencias oficiales:
-- guía de instalación pfrest: <https://pfrest.org/INSTALL_AND_CONFIG/>
-- guía de autenticación pfrest: <https://pfrest.org/AUTHENTICATION_AND_AUTHORIZATION/>
-- guía de Swagger/OpenAPI pfrest: <https://pfrest.org/SWAGGER_AND_OPENAPI/>
-- repositorio upstream: <https://github.com/pfrest/pfSense-pkg-RESTAPI>
-- referencia práctica en video usada durante este proyecto: <https://www.youtube.com/watch?v=inqMEOEVtao>
+Jerarquía de referencias:
+- proyecto upstream oficial (fuente canónica): <https://github.com/pfrest/pfSense-pkg-RESTAPI>
+- guía publicada de instalación: <https://pfrest.org/INSTALL_AND_CONFIG/>
+- guía publicada de autenticación: <https://pfrest.org/AUTHENTICATION_AND_AUTHORIZATION/>
+- guía publicada de Swagger/OpenAPI: <https://pfrest.org/SWAGGER_AND_OPENAPI/>
+- walkthrough práctico de instalación usado durante este proyecto: <https://www.youtube.com/watch?v=inqMEOEVtao>
 
 Comandos típicos de instalación según la documentación upstream:
 

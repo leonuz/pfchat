@@ -4,8 +4,12 @@ This file captures upstream facts from the pfrest project that are directly usef
 
 ## Upstream sources
 
+Primary canonical source:
 - GitHub repository: <https://github.com/pfrest/pfSense-pkg-RESTAPI>
-- Docs: <https://pfrest.org>
+
+Published guides:
+- Docs home: <https://pfrest.org>
+- Installation guide: <https://pfrest.org/INSTALL_AND_CONFIG/>
 - Swagger/OpenAPI guide: <https://pfrest.org/SWAGGER_AND_OPENAPI/>
 - Auth guide: <https://pfrest.org/AUTHENTICATION_AND_AUTHORIZATION/>
 - Query/filter guide: <https://pfrest.org/QUERIES_FILTERS_AND_SORTING/>
