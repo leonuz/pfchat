@@ -12,7 +12,7 @@ Project backlog, organized by priority.
 - [x] Add host/IP/port filters to reduce noise in `connections` and `logs`
 - [ ] Add unit tests for `pfsense_client.py` and `pfchat_query.py`
 - [ ] Add integration tests using mocked pfSense responses
-- [ ] Better document the output shape for each command
+- [x] Better document the output shape for each command
 
 ## Medium priority
 

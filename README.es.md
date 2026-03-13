@@ -233,11 +233,19 @@ En este host, la forma correcta de que cron jobs y sesiones aisladas hereden var
 
 Los reportes de PfChat deben preferir nombres de dispositivos tomados del inventario local (`TOOLS.md`). Si no existe mapping local, pueden usar reverse lookup y dejar la IP como respaldo.
 
+## Documentos de referencia
+
+Material adicional de referencia:
+- `pfchat/references/output-shapes.md` — forma general del JSON que devuelve cada comando
+- `pfchat/references/investigation-examples.md` — workflows prácticos de investigación y comandos de ejemplo
+- `pfchat/references/endpoints.md` — notas de endpoints y fallbacks
+- `pfchat/references/upstream-notes.md` — notas upstream de pfrest/OpenAPI
+
 ## Estado actual
 
 PfChat ya cubre el workflow de consulta en vivo por API. El foco actual es robustez, compatibilidad entre versiones y pulido operativo.
 
-Consulta `TODO.es.md`, `CHANGELOG.es.md` y `TELEGRAM.md` para ver pendientes, cambios y uso por canal. Las versiones base `TODO.md` y `CHANGELOG.md` están en inglés para GitHub.
+Consulta `TODO.es.md`, `CHANGELOG.es.md`, `TELEGRAM.md` y los documentos de referencia para ver pendientes, cambios y patrones de uso. Las versiones base `TODO.md` y `CHANGELOG.md` están en inglés para GitHub.
 
 ## Licencia
 

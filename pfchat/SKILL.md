@@ -180,6 +180,8 @@ Read `references/endpoints.md` for endpoint fallback behavior and version notes.
 
 - `scripts/pfchat_query.py` — main CLI entry point for live queries and snapshots
 - `scripts/pfsense_client.py` — reusable pfSense REST API client
+- `references/output-shapes.md` — expected high-level JSON output by command
 - `references/endpoints.md` — supported endpoints and fallback notes
 - `references/upstream-notes.md` — upstream pfrest/OpenAPI notes for future releases
 - `references/investigation-patterns.md` — practical investigation heuristics and reporting patterns
+- `references/investigation-examples.md` — concrete example workflows for WAN, blocked traffic, top talkers, and host triage

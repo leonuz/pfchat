@@ -12,7 +12,7 @@ Pendientes del proyecto, organizados por prioridad.
 - [x] Añadir filtros por host/IP/puerto para reducir ruido en `connections` y `logs`
 - [ ] Añadir pruebas unitarias para `pfsense_client.py` y `pfchat_query.py`
 - [ ] Añadir pruebas de integración con respuestas mockeadas de pfSense
-- [ ] Documentar mejor la estructura de salida de cada comando
+- [x] Documentar mejor la estructura de salida de cada comando
 
 ## Prioridad media
 

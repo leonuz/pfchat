@@ -233,11 +233,19 @@ On this host, the correct way for cron jobs and isolated sessions to inherit glo
 
 PfChat reports should prefer device names from the local inventory (`TOOLS.md`). If no local mapping exists, they may use reverse lookup and keep the IP only as fallback detail.
 
+## Reference docs
+
+Additional reference material:
+- `pfchat/references/output-shapes.md` — high-level JSON output shape per command
+- `pfchat/references/investigation-examples.md` — practical investigation workflows and example commands
+- `pfchat/references/endpoints.md` — endpoint and fallback notes
+- `pfchat/references/upstream-notes.md` — upstream pfrest/OpenAPI notes
+
 ## Current status
 
 PfChat already covers the live API workflow. The current focus is robustness, version compatibility, and operational polish.
 
-See `TODO.md`, `TODO.es.md`, `CHANGELOG.md`, `CHANGELOG.es.md`, and `TELEGRAM.md` for pending work, recent changes, and channel usage.
+See `TODO.md`, `TODO.es.md`, `CHANGELOG.md`, `CHANGELOG.es.md`, `TELEGRAM.md`, and the reference docs for pending work, recent changes, and usage patterns.
 
 ## License
 

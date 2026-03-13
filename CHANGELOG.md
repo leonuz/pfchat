@@ -16,6 +16,8 @@ All notable changes to this project will be documented in this file.
 - Automatic discovery of supported capabilities from `/api/v2/schema/openapi`
 - Initial query-filter support in `connections` and `rules`
 - Practical helper filters for `connections` and `logs` (`--host`, `--port`, `--interface`, `--contains`, `--action`)
+- `references/output-shapes.md` documenting the returned JSON shape of each command
+- `references/investigation-examples.md` with concrete workflows for WAN, blocked traffic, top talkers, and rule review
 - Explicit skill coverage for WAN address / firewall public IP questions, including Spanish phrasing
 - Config fallback to the project-local `pfchat/.env` based on script path for invocations from other channels/contexts
 - Real-world compatibility adjustments validated against a pfSense installation in this environment
