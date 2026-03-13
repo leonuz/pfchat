@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 - `references/investigation-examples.md` with concrete workflows for WAN, blocked traffic, top talkers, and rule review
 - Persistent local caching of the OpenAPI schema to reduce repeated discovery fetches
 - Initial `unittest` suite for `pfsense_client.py` and `pfchat_query.py`
+- Stricter `.env` validation for host, API key, and boolean SSL settings
 - Explicit skill coverage for WAN address / firewall public IP questions, including Spanish phrasing
 - Config fallback to the project-local `pfchat/.env` based on script path for invocations from other channels/contexts
 - Real-world compatibility adjustments validated against a pfSense installation in this environment

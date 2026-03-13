@@ -14,6 +14,27 @@ import pfchat_query  # noqa: E402
 
 
 class PfChatQueryTests(unittest.TestCase):
+    def test_parse_bool_env_accepts_common_values(self) -> None:
+        import os
+        os.environ['PFSENSE_VERIFY_SSL'] = 'yes'
+        self.assertTrue(pfchat_query.parse_bool_env('PFSENSE_VERIFY_SSL'))
+        os.environ['PFSENSE_VERIFY_SSL'] = 'off'
+        self.assertFalse(pfchat_query.parse_bool_env('PFSENSE_VERIFY_SSL'))
+
+    def test_parse_bool_env_rejects_invalid_values(self) -> None:
+        import os
+        os.environ['PFSENSE_VERIFY_SSL'] = 'maybe'
+        with self.assertRaises(SystemExit):
+            pfchat_query.parse_bool_env('PFSENSE_VERIFY_SSL')
+
+    def test_validate_host_rejects_urls(self) -> None:
+        with self.assertRaises(SystemExit):
+            pfchat_query.validate_host('https://192.168.0.254')
+
+    def test_validate_api_key_rejects_placeholder(self) -> None:
+        with self.assertRaises(SystemExit):
+            pfchat_query.validate_api_key('replace-me')
+
     def test_parse_filters_supports_scalar_and_array(self) -> None:
         parsed = pfchat_query.parse_filters([
             'descr__contains=OpenVPN',

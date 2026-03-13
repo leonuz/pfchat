@@ -22,7 +22,7 @@ Pendientes del proyecto, organizados por prioridad.
 - [ ] Mejorar el snapshot para resumir hallazgos de forma más compacta
 - [ ] Añadir ejemplos reales de investigación en `references/`
 - [ ] Evaluar soporte para múltiples LAN/VLAN en inventario de dispositivos
-- [ ] Añadir validación más estricta del archivo `.env`
+- [x] Añadir validación más estricta del archivo `.env`
 
 ## Prioridad baja
 

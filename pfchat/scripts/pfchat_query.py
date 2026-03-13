@@ -36,19 +36,51 @@ def load_env_file(path: Path) -> None:
             os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 
+def parse_bool_env(name: str, default: str = "false") -> bool:
+    raw = os.environ.get(name, default).strip().lower()
+    if raw in {"true", "1", "yes", "y", "on"}:
+        return True
+    if raw in {"false", "0", "no", "n", "off"}:
+        return False
+    raise SystemExit(
+        f"Invalid {name} value: {raw!r}. Expected one of true/false, 1/0, yes/no, on/off."
+    )
+
+
+def validate_host(host: str) -> str:
+    host = host.strip().rstrip('/')
+    if not host:
+        raise SystemExit("Missing PFSENSE_HOST. Set it in the environment or in a local .env file.")
+    if '://' in host:
+        raise SystemExit(
+            f"Invalid PFSENSE_HOST value: {host!r}. Provide only the host or IP, without http:// or https://."
+        )
+    if '/' in host:
+        raise SystemExit(
+            f"Invalid PFSENSE_HOST value: {host!r}. Provide only the host or IP, without URL paths."
+        )
+    return host
+
+
+def validate_api_key(api_key: str) -> str:
+    api_key = api_key.strip()
+    if not api_key:
+        raise SystemExit("Missing PFSENSE_API_KEY. Set it in the environment or in a local .env file.")
+    if any(ch.isspace() for ch in api_key):
+        raise SystemExit("Invalid PFSENSE_API_KEY. It must not contain whitespace.")
+    if api_key == 'replace-me':
+        raise SystemExit("Invalid PFSENSE_API_KEY. Replace the example placeholder with a real API key.")
+    return api_key
+
+
 def load_config() -> tuple[str, str, bool]:
     script_root = Path(__file__).resolve().parents[2]
     load_env_file(script_root / ".env")
     load_env_file(Path(".env"))
 
-    host = os.environ.get("PFSENSE_HOST", "").strip()
-    api_key = os.environ.get("PFSENSE_API_KEY", "").strip()
-    verify_ssl = os.environ.get("PFSENSE_VERIFY_SSL", "false").strip().lower() == "true"
-
-    if not host or not api_key:
-        raise SystemExit(
-            "Missing PFSENSE_HOST or PFSENSE_API_KEY. Set them in the environment or in a local .env file."
-        )
+    host = validate_host(os.environ.get("PFSENSE_HOST", ""))
+    api_key = validate_api_key(os.environ.get("PFSENSE_API_KEY", ""))
+    verify_ssl = parse_bool_env("PFSENSE_VERIFY_SSL", "false")
 
     return host, api_key, verify_ssl
 

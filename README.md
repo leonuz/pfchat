@@ -107,6 +107,9 @@ Notes:
 - `PFSENSE_VERIFY_SSL=false` keeps HTTPS enabled; it only disables certificate trust validation.
 - This is normal when pfSense uses a self-signed certificate or an internal CA that is not installed on the client host.
 - The CLI falls back to the project-local `pfchat/.env` based on the script path, which helps when the skill is invoked from another channel or working directory.
+- `PFSENSE_HOST` must be only the hostname or IP. Do not include `https://` or URL paths.
+- `PFSENSE_API_KEY` must be a real key, not the example placeholder.
+- `PFSENSE_VERIFY_SSL` accepts `true/false`, `1/0`, `yes/no`, or `on/off`.
 - Do not commit real API keys.
 
 ### 2. Run direct queries

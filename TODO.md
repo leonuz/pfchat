@@ -22,7 +22,7 @@ Project backlog, organized by priority.
 - [ ] Improve snapshot output to summarize findings more compactly
 - [ ] Add real investigation examples under `references/`
 - [ ] Evaluate support for multiple LAN/VLAN segments in device inventory
-- [ ] Add stricter `.env` validation
+- [x] Add stricter `.env` validation
 
 ## Low priority
 
