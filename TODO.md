@@ -9,7 +9,7 @@ Project backlog, organized by priority.
 - [x] Add optional endpoint discovery from `/api/v2/schema/openapi` and cache supported capabilities
 - [ ] Add optional persistent caching of the OpenAPI schema to reduce repeated fetches
 - [ ] Refine device inference when ARP/DHCP endpoints are not exposed by the API
-- [ ] Add host/IP/port filters to reduce noise in `connections` and `logs`
+- [x] Add host/IP/port filters to reduce noise in `connections` and `logs`
 - [ ] Add unit tests for `pfsense_client.py` and `pfchat_query.py`
 - [ ] Add integration tests using mocked pfSense responses
 - [ ] Better document the output shape for each command

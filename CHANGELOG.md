@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 - Integration of upstream pfrest findings and the live OpenAPI schema exposed by the local instance
 - Automatic discovery of supported capabilities from `/api/v2/schema/openapi`
 - Initial query-filter support in `connections` and `rules`
+- Practical helper filters for `connections` and `logs` (`--host`, `--port`, `--interface`, `--contains`, `--action`)
 - Explicit skill coverage for WAN address / firewall public IP questions, including Spanish phrasing
 - Config fallback to the project-local `pfchat/.env` based on script path for invocations from other channels/contexts
 - Real-world compatibility adjustments validated against a pfSense installation in this environment

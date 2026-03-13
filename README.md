@@ -205,8 +205,10 @@ From the repository root:
 python3 pfchat/scripts/pfchat_query.py capabilities
 python3 pfchat/scripts/pfchat_query.py devices
 python3 pfchat/scripts/pfchat_query.py connections --limit 200
-python3 pfchat/scripts/pfchat_query.py connections --limit 100 --filter source__contains=192.168.0.95
-python3 pfchat/scripts/pfchat_query.py logs --limit 200
+python3 pfchat/scripts/pfchat_query.py connections --limit 100 --host 192.168.0.95
+python3 pfchat/scripts/pfchat_query.py connections --limit 100 --port 443
+python3 pfchat/scripts/pfchat_query.py logs --limit 200 --action block --interface vtnet1
+python3 pfchat/scripts/pfchat_query.py logs --limit 200 --host 80.94.95.226
 python3 pfchat/scripts/pfchat_query.py interfaces
 python3 pfchat/scripts/pfchat_query.py health
 python3 pfchat/scripts/pfchat_query.py rules
