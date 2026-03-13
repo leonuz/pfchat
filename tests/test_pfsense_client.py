@@ -99,18 +99,22 @@ class PfSenseClientTests(unittest.TestCase):
     @patch.object(PfSenseClient, 'get_firewall_states')
     def test_infer_connected_devices_from_states(self, mock_states: MagicMock) -> None:
         mock_states.return_value = [
-            {'source': '192.168.0.95:443', 'destination': '34.1.2.3:443'},
-            {'source': '10.0.0.8:5555', 'destination': '192.168.0.50:53'},
-            {'source': '127.0.0.1:1234', 'destination': '8.8.8.8:53'},
-            {'source': '192.168.0.255:9999', 'destination': '1.1.1.1:443'},
+            {'source': '192.168.0.95:443', 'destination': '34.1.2.3:443', 'interface': 'vtnet0', 'source_host': 'iphoneLeo'},
+            {'source': '10.0.0.8:5555', 'destination': '192.168.0.50:53', 'interface': 'vtnet2'},
+            {'source': '127.0.0.1:1234', 'destination': '8.8.8.8:53', 'interface': 'lo0'},
+            {'source': '192.168.0.255:9999', 'destination': '1.1.1.1:443', 'interface': 'vtnet0'},
+            {'source': '17.1.1.1:443', 'destination': '192.168.0.95:53000', 'interface': 'vtnet0'},
         ]
         result = self.client._infer_connected_devices_from_states(limit=10)
-        ips = {entry['ip'] for entry in result['devices']}
-        self.assertIn('192.168.0.95', ips)
-        self.assertIn('10.0.0.8', ips)
-        self.assertIn('192.168.0.50', ips)
-        self.assertNotIn('127.0.0.1', ips)
-        self.assertNotIn('192.168.0.255', ips)
+        rows = {entry['ip']: entry for entry in result['devices']}
+        self.assertIn('192.168.0.95', rows)
+        self.assertIn('10.0.0.8', rows)
+        self.assertIn('192.168.0.50', rows)
+        self.assertNotIn('127.0.0.1', rows)
+        self.assertNotIn('192.168.0.255', rows)
+        self.assertEqual(rows['192.168.0.95']['hostname'], 'iphoneLeo')
+        self.assertEqual(rows['192.168.0.95']['confidence'], 'medium')
+        self.assertEqual(rows['192.168.0.95']['interfaces'], ['vtnet0'])
         self.assertTrue(result['degraded'])
 
 

@@ -57,7 +57,13 @@ Top-level shape:
 
 Fallback/inferred mode may instead contain:
 - `ip`
+- `hostname`
 - `seen_in_states`
+- `seen_as_source`
+- `seen_as_destination`
+- `interfaces`
+- `peer_count`
+- `confidence`
 - `degraded_reason`
 
 ## `connections`

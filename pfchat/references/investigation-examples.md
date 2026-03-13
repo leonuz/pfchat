@@ -128,6 +128,7 @@ If `degraded` is false:
 
 If `degraded` is true:
 - explain that device inventory was inferred from active firewall states
+- use `confidence`, `seen_as_source`, `seen_as_destination`, `interfaces`, and `peer_count` to describe how strong the inference is
 - avoid overclaiming hostname confidence
 
 ## 8. Focus on port 443 only

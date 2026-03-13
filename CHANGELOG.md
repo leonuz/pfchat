@@ -24,6 +24,7 @@ All notable changes to this project will be documented in this file.
 - Compact snapshot `summary` section for WAN, gateways, top devices, top flows, blocked log counts, and highlights
 - Mocked integration tests covering device inventory and snapshot flows without requiring a live pfSense instance
 - `--once` automation presets and reduced `--view` rendering for compact workflows
+- Better degraded device inference from firewall states, including interfaces, peer counts, and confidence hints
 - Explicit skill coverage for WAN address / firewall public IP questions, including Spanish phrasing
 - Config fallback to the project-local `pfchat/.env` based on script path for invocations from other channels/contexts
 - Real-world compatibility adjustments validated against a pfSense installation in this environment

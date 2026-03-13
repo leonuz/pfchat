@@ -203,6 +203,16 @@ class PfSenseClient:
             return value.rsplit(":", 1)[0]
         return value
 
+    @staticmethod
+    def _normalize_hostname(value: Any) -> str:
+        name = str(value or '').strip()
+        if not name:
+            return ''
+        lowered = name.lower()
+        if lowered in {'?', '(null)', 'unknown', '(unknown)', 'none'}:
+            return ''
+        return name
+
     def _infer_connected_devices_from_states(self, limit: int = 500) -> dict[str, Any]:
         states = self.get_firewall_states(limit=limit)
         devices: dict[str, dict[str, Any]] = {}
@@ -210,26 +220,74 @@ class PfSenseClient:
         for state in states:
             if not isinstance(state, dict):
                 continue
-            for field in ("source", "destination"):
+            interface = state.get('interface') or state.get('if') or ''
+            direction = str(state.get('direction') or '').lower()
+            for field, peer_field in (("source", "destination"), ("destination", "source")):
                 ip = self._extract_ip(state.get(field, ""))
+                peer_ip = self._extract_ip(state.get(peer_field, ""))
                 if not ip:
                     continue
                 try:
                     parsed_ip = ipaddress.ip_address(ip)
                 except ValueError:
                     continue
-                if parsed_ip.is_private and not parsed_ip.is_loopback and not parsed_ip.is_multicast and not parsed_ip.is_unspecified:
-                    if str(parsed_ip).endswith('.255'):
-                        continue
-                    row = devices.setdefault(ip, {
-                        "ip": ip,
-                        "hostname": "(inferred-from-states)",
-                        "source": "firewall_states_fallback",
-                        "seen_in_states": 0,
-                    })
-                    row["seen_in_states"] += 1
+                if not parsed_ip.is_private or parsed_ip.is_loopback or parsed_ip.is_multicast or parsed_ip.is_unspecified:
+                    continue
+                if str(parsed_ip).endswith('.255'):
+                    continue
 
-        inferred = sorted(devices.values(), key=lambda item: (-item["seen_in_states"], item["ip"]))
+                row = devices.setdefault(ip, {
+                    "ip": ip,
+                    "hostname": "",
+                    "source": "firewall_states_fallback",
+                    "seen_in_states": 0,
+                    "seen_as_source": 0,
+                    "seen_as_destination": 0,
+                    "interfaces": set(),
+                    "peers": set(),
+                    "confidence": "low",
+                })
+                row["seen_in_states"] += 1
+                row["interfaces"].add(str(interface))
+                if peer_ip:
+                    row["peers"].add(peer_ip)
+                if field == 'source':
+                    row["seen_as_source"] += 1
+                else:
+                    row["seen_as_destination"] += 1
+
+                for candidate in (
+                    state.get('source_host') if field == 'source' else state.get('destination_host'),
+                    state.get('source_name') if field == 'source' else state.get('destination_name'),
+                    state.get('host'),
+                    state.get('hostname'),
+                    state.get('dnsresolve'),
+                ):
+                    normalized = self._normalize_hostname(candidate)
+                    if normalized:
+                        row['hostname'] = normalized
+                        break
+
+                if row['seen_as_source'] > 0 and row['seen_as_destination'] > 0:
+                    row['confidence'] = 'medium'
+                if row['seen_in_states'] >= 3:
+                    row['confidence'] = 'medium'
+
+        inferred: list[dict[str, Any]] = []
+        for item in devices.values():
+            inferred.append({
+                "ip": item["ip"],
+                "hostname": item["hostname"] or "(inferred-from-states)",
+                "source": item["source"],
+                "seen_in_states": item["seen_in_states"],
+                "seen_as_source": item["seen_as_source"],
+                "seen_as_destination": item["seen_as_destination"],
+                "interfaces": sorted(x for x in item["interfaces"] if x),
+                "peer_count": len(item["peers"]),
+                "confidence": item["confidence"],
+            })
+
+        inferred.sort(key=lambda item: (-item["seen_in_states"], -item["peer_count"], item["ip"]))
         return {
             "total_devices": len(inferred),
             "devices": inferred,

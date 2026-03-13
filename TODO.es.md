@@ -8,7 +8,7 @@ Pendientes del proyecto, organizados por prioridad.
 - [ ] Añadir soporte opcional para CA custom (`PFSENSE_CA_FILE`) y así validar certificados sin usar `PFSENSE_VERIFY_SSL=false`  ← pendiente solicitado, no implementar todavía
 - [x] Añadir descubrimiento opcional de endpoints desde `/api/v2/schema/openapi` y cachear capacidades soportadas
 - [x] Añadir cache persistente opcional del schema OpenAPI para reducir fetches repetidos
-- [ ] Afinar la inferencia de dispositivos cuando ARP/DHCP no estén expuestos por la API
+- [x] Afinar la inferencia de dispositivos cuando ARP/DHCP no estén expuestos por la API
 - [x] Añadir filtros por host/IP/puerto para reducir ruido en `connections` y `logs`
 - [x] Añadir pruebas unitarias para `pfsense_client.py` y `pfchat_query.py`
 - [x] Añadir pruebas de integración con respuestas mockeadas de pfSense
