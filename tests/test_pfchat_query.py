@@ -76,6 +76,18 @@ class PfChatQueryTests(unittest.TestCase):
         self.assertEqual(filtered[0]['id'], 1)
         self.assertIn('parsed', filtered[0])
 
+    def test_apply_once_preset_sets_expected_values(self) -> None:
+        import argparse
+        args = argparse.Namespace(command='snapshot', once='wan', view='full', limit=100, action=None)
+        updated = pfchat_query.apply_once_preset(args)
+        self.assertEqual(updated.command, 'health')
+        self.assertEqual(updated.view, 'wan')
+
+    def test_render_view_summary_extracts_summary_block(self) -> None:
+        data = {'summary': {'highlights': ['ok']}, 'other': 1}
+        rendered = pfchat_query.render_view(data, 'summary')
+        self.assertEqual(rendered, {'highlights': ['ok']})
+
 
 if __name__ == '__main__':
     unittest.main()

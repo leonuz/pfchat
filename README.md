@@ -120,6 +120,9 @@ python3 pfchat/scripts/pfchat_query.py capabilities
 python3 pfchat/scripts/pfchat_query.py devices
 python3 pfchat/scripts/pfchat_query.py health
 python3 pfchat/scripts/pfchat_query.py snapshot --limit 150
+python3 pfchat/scripts/pfchat_query.py --once compact
+python3 pfchat/scripts/pfchat_query.py --once wan
+python3 pfchat/scripts/pfchat_query.py --once blocked
 ```
 
 ### 3. Use from OpenClaw
@@ -200,6 +203,29 @@ pfchat/
         ├── endpoints.md
         ├── upstream-notes.md
         └── investigation-patterns.md
+```
+
+## Automation presets
+
+PfChat now includes one-shot presets for scripting and automation:
+
+- `--once compact` → compact snapshot summary
+- `--once triage` → broader snapshot summary
+- `--once wan` → WAN-focused health output
+- `--once blocked` → recent blocked log view
+
+Useful reduced views:
+- `--view summary`
+- `--view wan`
+- `--view highlights`
+
+Examples:
+
+```bash
+python3 pfchat/scripts/pfchat_query.py --once compact
+python3 pfchat/scripts/pfchat_query.py --once triage
+python3 pfchat/scripts/pfchat_query.py --once wan
+python3 pfchat/scripts/pfchat_query.py snapshot --limit 150 --view highlights
 ```
 
 ## Helper CLI

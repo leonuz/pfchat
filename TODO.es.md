@@ -18,9 +18,9 @@ Pendientes del proyecto, organizados por prioridad.
 
 - [ ] Añadir un workflow documentado y automatizable de resúmenes/alertas vía Telegram sobre OpenClaw
 - [ ] Descubrir más variantes reales de endpoints del paquete REST API de pfSense
-- [ ] Añadir modo `--once` o presets orientados a automatización
+- [x] Añadir modo `--once` o presets orientados a automatización
 - [x] Mejorar el snapshot para resumir hallazgos de forma más compacta
-- [ ] Añadir ejemplos reales de investigación en `references/`
+- [x] Añadir ejemplos reales de investigación en `references/`
 - [ ] Evaluar soporte para múltiples LAN/VLAN en inventario de dispositivos
 - [x] Añadir validación más estricta del archivo `.env`
 

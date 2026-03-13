@@ -23,6 +23,7 @@ Todos los cambios relevantes de este proyecto se documentan aquí.
 - Validación más estricta del `.env` para host, API key y settings booleanos de SSL
 - Sección compacta `summary` dentro del snapshot para WAN, gateways, top devices, top flows, conteo de bloqueos y highlights
 - Pruebas de integración mockeadas para inventario de dispositivos y snapshot sin requerir un pfSense vivo
+- Presets de automatización con `--once` y vistas reducidas con `--view` para workflows compactos
 - Cobertura explícita en la skill para preguntas sobre dirección WAN / IP pública del firewall, también en español
 - Fallback de configuración al archivo `pfchat/.env` basado en la ruta del script, para invocaciones desde otros canales/contextos
 - Compatibilidad real con una instalación de pfSense validada en este entorno

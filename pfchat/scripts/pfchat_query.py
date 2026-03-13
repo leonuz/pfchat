@@ -5,7 +5,7 @@ Examples:
   python3 skills/pfchat/scripts/pfchat_query.py devices
   python3 skills/pfchat/scripts/pfchat_query.py connections --limit 200 --host 192.168.0.95
   python3 skills/pfchat/scripts/pfchat_query.py logs --limit 200 --contains block --interface vtnet1
-  python3 skills/pfchat/scripts/pfchat_query.py snapshot --limit 150
+  python3 skills/pfchat/scripts/pfchat_query.py snapshot --limit 150 --once compact
 """
 
 from __future__ import annotations
@@ -24,6 +24,14 @@ from pfsense_client import PfSenseClient
 FILTERLOG_RE = re.compile(
     r"(?P<rule>\d*),(?P<subrule>[^,]*),(?P<anchor>[^,]*),(?P<tracker>[^,]*),(?P<interface>[^,]*),(?P<reason>[^,]*),(?P<action>[^,]*),(?P<direction>[^,]*),(?P<ipver>[^,]*),(?P<tos>[^,]*),(?P<ecn>[^,]*),(?P<ttl>[^,]*),(?P<protocol_text>[^,]*),(?P<protocol_id>[^,]*),(?P<length>[^,]*),(?P<src>[^,]*),(?P<dst>[^,]*)(?:,(?P<src_port>[^,]*),(?P<dst_port>[^,]*).*)?$"
 )
+
+
+ONCE_PRESETS = {
+    'compact': {'command': 'snapshot', 'limit': 50, 'view': 'summary'},
+    'triage': {'command': 'snapshot', 'limit': 150, 'view': 'summary'},
+    'wan': {'command': 'health', 'limit': 20, 'view': 'wan'},
+    'blocked': {'command': 'logs', 'limit': 100, 'action': 'block', 'view': 'logs'},
+}
 
 
 def load_env_file(path: Path) -> None:
@@ -171,6 +179,39 @@ def filter_logs(
     return filtered
 
 
+def apply_once_preset(args: argparse.Namespace) -> argparse.Namespace:
+    if not args.once:
+        return args
+    preset = ONCE_PRESETS[args.once]
+    args.command = preset['command']
+    args.limit = preset.get('limit', args.limit)
+    args.view = preset.get('view', args.view)
+    if preset.get('action') and not args.action:
+        args.action = preset['action']
+    return args
+
+
+def render_view(data: Any, view: str | None) -> Any:
+    if not view or view == 'full':
+        return data
+    if view == 'summary':
+        if isinstance(data, dict) and 'summary' in data:
+            return data['summary']
+        raise SystemExit('The selected command does not provide a summary view.')
+    if view == 'wan':
+        if isinstance(data, dict) and 'interfaces' in data:
+            wan = next((item for item in data.get('interfaces', []) if str(item.get('name', '')).lower() == 'wan'), None)
+            return {'wan': wan}
+        if isinstance(data, dict) and 'summary' in data:
+            return {'wan': data['summary'].get('wan')}
+        raise SystemExit('The selected command does not provide a WAN view.')
+    if view == 'highlights':
+        if isinstance(data, dict) and 'summary' in data:
+            return {'highlights': data['summary'].get('highlights', [])}
+        raise SystemExit('The selected command does not provide highlights.')
+    raise SystemExit(f'Unknown --view value: {view}')
+
+
 def print_json(data: Any) -> None:
     json.dump(data, sys.stdout, indent=2, ensure_ascii=False, default=str)
     sys.stdout.write("\n")
@@ -180,9 +221,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Query pfSense API for the PfChat skill")
     parser.add_argument(
         "command",
+        nargs='?',
+        default='snapshot',
         choices=["capabilities", "devices", "connections", "logs", "interfaces", "health", "rules", "snapshot"],
         help="Dataset to fetch from pfSense",
     )
+    parser.add_argument("--once", choices=sorted(ONCE_PRESETS.keys()), help="Run an automation-oriented preset in one shot")
+    parser.add_argument("--view", choices=["full", "summary", "wan", "highlights"], default='full', help="Render a reduced view when supported")
     parser.add_argument("--limit", type=int, default=100, help="Entry limit for large endpoints")
     parser.add_argument("--filter", action="append", default=[], help="Query filter in key=value form; repeatable")
     parser.add_argument("--host", help="Host/IP filter helper for connections or logs")
@@ -191,6 +236,7 @@ def main() -> int:
     parser.add_argument("--contains", help="Free-text contains helper for connections or logs")
     parser.add_argument("--action", choices=["block", "pass", "match"], help="Log action filter helper")
     args = parser.parse_args()
+    args = apply_once_preset(args)
 
     host, api_key, verify_ssl = load_config()
     client = PfSenseClient(host=host, api_key=api_key, verify_ssl=verify_ssl)
@@ -240,7 +286,7 @@ def main() -> int:
     else:
         data = client.get_snapshot(limit=args.limit)
 
-    print_json(data)
+    print_json(render_view(data, args.view))
     return 0
 
 
