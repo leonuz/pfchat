@@ -88,6 +88,34 @@ class PfChatQueryTests(unittest.TestCase):
         rendered = pfchat_query.render_view(data, 'summary')
         self.assertEqual(rendered, {'highlights': ['ok']})
 
+    def test_build_block_draft_for_device_target(self) -> None:
+        class Client:
+            def get_connected_devices(self):
+                return {
+                    'devices': [
+                        {'hostname': 'iphoneLeo', 'ip_address': '192.168.0.95', 'interface': 'LAN'}
+                    ]
+                }
+
+            def get_capabilities(self):
+                return {'capabilities': {'firewall_aliases_write': True, 'firewall_apply': True}}
+
+        draft = pfchat_query.build_block_draft(Client(), 'iphoneLeo', 'block-device')
+        self.assertEqual(draft['target']['ip'], '192.168.0.95')
+        self.assertEqual(draft['proposal']['rule_interface'], 'LAN')
+        self.assertEqual(draft['apply_status'], 'not-implemented')
+
+    def test_build_block_draft_for_ip_requires_valid_ip(self) -> None:
+        class Client:
+            def get_connected_devices(self):
+                return {'devices': []}
+
+            def get_capabilities(self):
+                return {'capabilities': {}}
+
+        with self.assertRaises(SystemExit):
+            pfchat_query.build_block_draft(Client(), 'not-an-ip', 'block-ip')
+
 
 if __name__ == '__main__':
     unittest.main()

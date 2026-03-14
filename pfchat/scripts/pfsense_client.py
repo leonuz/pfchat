@@ -378,6 +378,8 @@ class PfSenseClient:
                 "interfaces": any(path in supported for path in ["status/interfaces", "interfaces", "interface"]),
                 "system_status": any(path in supported for path in ["status/system", "system/stats", "system/status"]),
                 "gateways": any(path in supported for path in ["status/gateways", "routing/gateways", "routing/gateway", "status/gateway", "system/gateways"]),
+                "firewall_aliases_write": any(path in supported for path in ["firewall/aliases", "firewall/alias"]),
+                "firewall_apply": "firewall/apply" in supported,
             },
         }
 

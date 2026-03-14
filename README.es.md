@@ -205,6 +205,24 @@ pfchat/
         └── investigation-patterns.md
 ```
 
+## Drafts seguros de acciones de firewall
+
+PfChat ahora incluye drafts administrativos en modo **preview-only** para futuras acciones seguras sobre el firewall.
+
+Ejemplos:
+
+```bash
+python3 pfchat/scripts/pfchat_query.py block-ip --target 1.2.3.4
+python3 pfchat/scripts/pfchat_query.py block-device --target iphoneLeo
+python3 pfchat/scripts/pfchat_query.py block-device --target 192.168.0.95
+```
+
+Comportamiento actual:
+- resuelve el target
+- propone metadata de alias/regla
+- reporta soporte del schema para futuros pasos de write/apply
+- **todavía no aplica** ningún cambio al firewall
+
 ## Presets de automatización
 
 PfChat ahora incluye presets one-shot para scripting y automatización:

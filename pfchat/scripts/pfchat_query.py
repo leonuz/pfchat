@@ -6,11 +6,14 @@ Examples:
   python3 skills/pfchat/scripts/pfchat_query.py connections --limit 200 --host 192.168.0.95
   python3 skills/pfchat/scripts/pfchat_query.py logs --limit 200 --contains block --interface vtnet1
   python3 skills/pfchat/scripts/pfchat_query.py snapshot --limit 150 --once compact
+  python3 skills/pfchat/scripts/pfchat_query.py block-ip --target 1.2.3.4
+  python3 skills/pfchat/scripts/pfchat_query.py block-device --target iphoneLeo
 """
 
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import json
 import os
 import re
@@ -191,6 +194,147 @@ def apply_once_preset(args: argparse.Namespace) -> argparse.Namespace:
     return args
 
 
+def normalize_device_name(value: Any) -> str:
+    return str(value or '').strip().lower()
+
+
+def is_ip_address(value: str) -> bool:
+    try:
+        ipaddress.ip_address(value)
+        return True
+    except ValueError:
+        return False
+
+
+def sanitize_alias_component(value: str) -> str:
+    cleaned = re.sub(r'[^a-zA-Z0-9]+', '_', value).strip('_')
+    return cleaned[:40] or 'target'
+
+
+def resolve_block_target(client: PfSenseClient, target: str, command: str) -> dict[str, Any]:
+    target = str(target or '').strip()
+    if not target:
+        raise SystemExit('Missing --target. Provide an IP, hostname, or device name to draft a block action.')
+
+    devices = client.get_connected_devices()
+    candidates = devices.get('devices', []) if isinstance(devices, dict) else []
+
+    if command == 'block-ip':
+        if not is_ip_address(target):
+            raise SystemExit('block-ip requires --target to be a valid IP address.')
+        matched = next(
+            (
+                item for item in candidates
+                if str(item.get('ip') or item.get('ip_address') or '').strip() == target
+            ),
+            None,
+        )
+        return {
+            'kind': 'ip',
+            'input': target,
+            'ip': target,
+            'device': matched,
+            'resolution': 'exact-ip',
+        }
+
+    normalized_target = normalize_device_name(target)
+    matches = []
+    for item in candidates:
+        hostname = normalize_device_name(item.get('hostname'))
+        ip_value = str(item.get('ip') or item.get('ip_address') or '').strip()
+        if normalized_target in {hostname, normalize_device_name(ip_value)}:
+            matches.append(item)
+
+    if is_ip_address(target) and not matches:
+        return {
+            'kind': 'device',
+            'input': target,
+            'ip': target,
+            'device': None,
+            'resolution': 'ip-without-device-match',
+        }
+
+    if not matches:
+        raise SystemExit(f'No device matched target: {target!r}')
+    if len(matches) > 1:
+        raise SystemExit(f'Ambiguous device target: {target!r}. Narrow it to an IP or exact hostname.')
+
+    device = matches[0]
+    return {
+        'kind': 'device',
+        'input': target,
+        'ip': str(device.get('ip') or device.get('ip_address') or '').strip(),
+        'device': device,
+        'resolution': 'device-match',
+    }
+
+
+def build_block_draft(client: PfSenseClient, target: str, command: str) -> dict[str, Any]:
+    resolved = resolve_block_target(client, target, command)
+    ip_value = resolved.get('ip')
+    if not ip_value or not is_ip_address(ip_value):
+        raise SystemExit(f'Unable to resolve a valid IP address from target: {target!r}')
+
+    try:
+        parsed_ip = ipaddress.ip_address(ip_value)
+    except ValueError as exc:
+        raise SystemExit(f'Unable to resolve a valid IP address from target: {target!r}') from exc
+
+    device = resolved.get('device') if isinstance(resolved.get('device'), dict) else {}
+    interface = device.get('interface') or None
+    hostname = device.get('hostname') or device.get('dnsresolve') or ip_value
+    caps = client.get_capabilities().get('capabilities', {})
+    alias_name = f"pfchat_block_{sanitize_alias_component(hostname)}_{sanitize_alias_component(ip_value)}"
+    private_target = parsed_ip.is_private
+
+    warnings: list[str] = []
+    if private_target:
+        warnings.append('Target is RFC1918/private space. Review LAN impact carefully before any apply step.')
+    if not interface:
+        warnings.append('No interface could be resolved from device inventory. Preview cannot safely choose placement yet.')
+    if not caps.get('firewall_aliases_write'):
+        warnings.append('Live schema does not currently confirm firewall alias write endpoints.')
+    if not caps.get('firewall_apply'):
+        warnings.append('Live schema does not currently confirm firewall apply endpoint.')
+
+    return {
+        'mode': 'draft',
+        'command': command,
+        'apply_supported_now': False,
+        'apply_status': 'not-implemented',
+        'target': {
+            'input': resolved['input'],
+            'kind': resolved['kind'],
+            'resolution': resolved['resolution'],
+            'hostname': hostname,
+            'ip': ip_value,
+            'device': device or None,
+        },
+        'proposal': {
+            'strategy': 'alias_plus_rule_preview',
+            'alias_name': alias_name,
+            'alias_type': 'host',
+            'alias_values': [ip_value],
+            'rule_action': 'block',
+            'rule_direction': 'in',
+            'rule_interface': interface,
+            'rule_description': f'PfChat draft block for {hostname} ({ip_value})',
+        },
+        'schema_support': {
+            'firewall_aliases_write': bool(caps.get('firewall_aliases_write')),
+            'firewall_apply': bool(caps.get('firewall_apply')),
+        },
+        'risk': {
+            'private_target': private_target,
+            'warnings': warnings,
+        },
+        'next_steps': [
+            'Review this draft and confirm the target, interface, and expected impact.',
+            'Apply is intentionally not implemented yet in this phase.',
+        ],
+    }
+
+
 def render_view(data: Any, view: str | None) -> Any:
     if not view or view == 'full':
         return data
@@ -223,7 +367,7 @@ def main() -> int:
         "command",
         nargs='?',
         default='snapshot',
-        choices=["capabilities", "devices", "connections", "logs", "interfaces", "health", "rules", "snapshot"],
+        choices=["capabilities", "devices", "connections", "logs", "interfaces", "health", "rules", "snapshot", "block-ip", "block-device"],
         help="Dataset to fetch from pfSense",
     )
     parser.add_argument("--once", choices=sorted(ONCE_PRESETS.keys()), help="Run an automation-oriented preset in one shot")
@@ -235,6 +379,7 @@ def main() -> int:
     parser.add_argument("--interface", help="Interface filter helper for connections or logs")
     parser.add_argument("--contains", help="Free-text contains helper for connections or logs")
     parser.add_argument("--action", choices=["block", "pass", "match"], help="Log action filter helper")
+    parser.add_argument("--target", help="Target IP or device identifier for draft block workflows")
     args = parser.parse_args()
     args = apply_once_preset(args)
 
@@ -283,6 +428,8 @@ def main() -> int:
     elif args.command == "rules":
         rules = client.get_firewall_rules(filters=base_filters or None)
         data = {"total_rules": len(rules), "rules": rules, "applied_filters": base_filters}
+    elif args.command in {"block-ip", "block-device"}:
+        data = build_block_draft(client, args.target or '', args.command)
     else:
         data = client.get_snapshot(limit=args.limit)
 

@@ -62,6 +62,8 @@ class PfSenseClientTests(unittest.TestCase):
         self.assertTrue(caps['capabilities']['rules'])
         self.assertTrue(caps['capabilities']['interfaces'])
         self.assertTrue(caps['capabilities']['gateways'])
+        self.assertFalse(caps['capabilities']['firewall_aliases_write'])
+        self.assertFalse(caps['capabilities']['firewall_apply'])
 
     def test_summarize_snapshot_builds_highlights(self) -> None:
         snapshot = {
@@ -106,6 +108,12 @@ class PfSenseClientTests(unittest.TestCase):
             gateways = self.client.get_gateways()
         self.assertEqual(gateways, [{'name': 'WAN_DHCP'}])
         mock_get.assert_called_once_with('routing/gateway', None)
+
+    def test_get_capabilities_detects_write_related_paths(self) -> None:
+        self.client._supported_paths = {'firewall/aliases', 'firewall/apply'}
+        caps = self.client.get_capabilities()
+        self.assertTrue(caps['capabilities']['firewall_aliases_write'])
+        self.assertTrue(caps['capabilities']['firewall_apply'])
 
     @patch.object(PfSenseClient, 'get_firewall_states')
     def test_infer_connected_devices_from_states(self, mock_states: MagicMock) -> None:
