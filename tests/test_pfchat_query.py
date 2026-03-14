@@ -243,7 +243,7 @@ class PfChatQueryTests(unittest.TestCase):
         self.assertEqual(result['status'], 'applied')
         self.assertEqual(client.alias_payload['name'], 'pfb_iphoneleo_192_168_0_95')
         self.assertEqual(client.rule_payload['interface'], ['lan'])
-        self.assertEqual(client.rule_payload['source'], 'pfb_iphoneleo_192_168_0_95')
+        self.assertEqual(client.rule_payload['source'], '192.168.0.95')
         self.assertEqual(client.rule_payload['destination'], 'any')
         self.assertEqual(client.rule_payload['protocol'], 'any')
         self.assertEqual(client.apply_payload, {'async': False})

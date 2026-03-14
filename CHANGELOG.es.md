@@ -38,6 +38,7 @@ Todos los cambios relevantes de este proyecto se documentan aquí.
 - Validación real en pfSense de block/apply/rollback para un bloqueo de salida específico de `sniperhack` sobre `tcp/80`
 - Drafts de salida por host con capacidad ICMP vía `block-egress-proto --target <host> --proto icmp`
 - Validación real en pfSense de block/apply/rollback para salida ICMP de `sniperhack`
+- Las reglas de bloqueo para un solo host ahora usan la IP literal en el payload `source` de pfSense en vez del nombre del alias generado
 - Convención de documentos orientada a GitHub: `README.md`, `TODO.md` y `CHANGELOG.md` quedan como originales en inglés, y las variantes en español pasan a `README.es.md`, `TODO.es.md` y `CHANGELOG.es.md`
 - Documento `TELEGRAM.md` con el flujo recomendado para usar PfChat a través de OpenClaw en Telegram
 - Documentación del caso de uso de resumen diario por email mediante OpenClaw + Resend

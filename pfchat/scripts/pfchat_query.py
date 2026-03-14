@@ -522,7 +522,7 @@ def execute_apply_draft(client: PfSenseClient, draft: dict[str, Any], confirm: b
         'type': proposal['rule_action'],
         'ipprotocol': 'inet',
         'protocol': proposal.get('rule_protocol', 'any'),
-        'source': proposal['alias_name'],
+        'source': proposal['alias_values'][0],
         'destination': 'any',
         'descr': proposal['rule_description'],
         'log': True,

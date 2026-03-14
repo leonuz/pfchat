@@ -38,6 +38,7 @@ All notable changes to this project will be documented in this file.
 - Real pfSense validation of host-specific egress block/apply/rollback for `sniperhack` on `tcp/80`
 - ICMP-capable host-specific egress drafts via `block-egress-proto --target <host> --proto icmp`
 - Real pfSense validation of ICMP egress block/apply/rollback for `sniperhack`
+- Single-host block rules now use the literal source IP in pfSense rule payloads instead of the generated alias name
 - English-first repository document layout: `README.md`, `TODO.md`, and `CHANGELOG.md` are now the canonical English docs, with Spanish variants in `README.es.md`, `TODO.es.md`, and `CHANGELOG.es.md`
 - `TELEGRAM.md` documenting the recommended workflow for using PfChat through OpenClaw on Telegram
 - Documentation for the daily email summary use case through OpenClaw + Resend

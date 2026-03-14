@@ -256,6 +256,7 @@ Caveats prácticos confirmados por el schema real de pfSense:
 - los nombres de alias deben respetar el límite de pfSense (31 chars)
 - los valores de `interface` deben usar opciones válidas en minúsculas como `lan` y `wan`
 - rollback es más seguro usando los IDs de objetos pfSense devueltos al crear
+- las reglas actuales de bloqueo para un solo host usan la IP literal en `source`, mientras los aliases siguen existiendo para tracking y cleanup gestionado por PfChat
 
 ## Presets de automatización
 

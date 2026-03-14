@@ -256,6 +256,7 @@ Practical caveats from the real pfSense schema:
 - alias names must stay within the pfSense limit (31 chars)
 - interface values must use schema-valid lowercase choices such as `lan` and `wan`
 - rollback is safest when using pfSense object IDs returned by the create calls
+- current single-host block rules use the literal source IP in the rule, while aliases are still created for PfChat-managed tracking and cleanup
 
 ## Automation presets
 
