@@ -206,6 +206,92 @@ Top-level shape:
 }
 ```
 
+## `block-ip` / `block-device`
+
+Purpose:
+- create a persisted draft for a safe firewall block workflow
+
+Top-level shape:
+
+```json
+{
+  "mode": "draft",
+  "command": "block-device",
+  "apply_status": "draft-only",
+  "draft_id": "12d4154718ac",
+  "target": {
+    "input": "192.168.0.81",
+    "kind": "device",
+    "resolution": "device-match",
+    "hostname": "sniperhack",
+    "ip": "192.168.0.81"
+  },
+  "proposal": {
+    "alias_name": "pfb_sniperhack_192_168_0_81",
+    "rule_interface": "lan",
+    "rule_action": "block"
+  },
+  "schema_support": {
+    "firewall_aliases_write": true,
+    "firewall_apply": true
+  }
+}
+```
+
+## `apply-draft`
+
+Purpose:
+- preview or execute a saved firewall block draft
+
+Preview shape:
+
+```json
+{
+  "mode": "apply-preview",
+  "draft_id": "12d4154718ac",
+  "status": "ready-for-confirmation",
+  "draft": { ... }
+}
+```
+
+Confirmed apply shape:
+
+```json
+{
+  "mode": "apply",
+  "draft_id": "12d4154718ac",
+  "status": "applied",
+  "results": {
+    "alias": {"id": 3, "name": "pfb_sniperhack_192_168_0_81"},
+    "rule": {"id": 5, "descr": "PfChat draft block for sniperhack (192.168.0.81)"},
+    "apply": {"applied": true}
+  }
+}
+```
+
+If the same draft is applied again, shape may instead be:
+- `status: "already-applied"`
+
+## `rollback-draft`
+
+Purpose:
+- preview or execute rollback for a previously applied draft
+
+Confirmed rollback shape:
+
+```json
+{
+  "mode": "rollback",
+  "draft_id": "12d4154718ac",
+  "status": "rolled-back",
+  "results": {
+    "rule_delete": {"id": 5},
+    "alias_delete": {"id": 3},
+    "apply": {"applied": true}
+  }
+}
+```
+
 ## `snapshot`
 
 Purpose:

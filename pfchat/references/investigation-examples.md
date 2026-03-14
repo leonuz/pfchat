@@ -143,3 +143,36 @@ This is useful to quickly inspect:
 - HTTPS activity
 - QUIC over UDP 443
 - heavy streaming/app traffic patterns
+
+## 9. Safely block and then roll back a lab device
+
+Draft first:
+
+```bash
+python3 pfchat/scripts/pfchat_query.py block-device --target 192.168.0.81
+```
+
+Preview the draft later if needed:
+
+```bash
+python3 pfchat/scripts/pfchat_query.py draft-show --draft-id <id>
+python3 pfchat/scripts/pfchat_query.py apply-draft --draft-id <id>
+```
+
+Apply only with explicit confirmation:
+
+```bash
+python3 pfchat/scripts/pfchat_query.py apply-draft --draft-id <id> --confirm
+```
+
+Then roll back the change:
+
+```bash
+python3 pfchat/scripts/pfchat_query.py rollback-draft --draft-id <id>
+python3 pfchat/scripts/pfchat_query.py rollback-draft --draft-id <id> --confirm
+```
+
+Real validation notes from this project:
+- this workflow was validated against `sniperhack.uzc` (`192.168.0.81`)
+- pfSense returned real object IDs for alias and rule creation
+- rollback worked cleanly when those IDs were reused

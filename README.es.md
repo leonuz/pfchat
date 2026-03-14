@@ -205,9 +205,9 @@ pfchat/
         └── investigation-patterns.md
 ```
 
-## Drafts seguros de acciones de firewall
+## Acciones seguras de firewall
 
-PfChat ahora incluye drafts administrativos en modo **preview-only** para futuras acciones seguras sobre el firewall.
+PfChat ahora incluye acciones administrativas reales de firewall para flujos de bloqueo, con guardrails de draft/preview/apply/rollback.
 
 Ejemplos:
 
@@ -227,12 +227,25 @@ Comportamiento actual:
 - resuelve el target
 - propone metadata de alias/regla
 - guarda la propuesta localmente con un `draft_id`
-- soporta `draft-show`, `draft-list` y `apply-draft`
+- soporta `draft-show`, `draft-list`, `apply-draft` y `rollback-draft`
 - `apply-draft` sin `--confirm` solo hace preview y audita la intención
 - `apply-draft --confirm` ejecuta alias + regla + firewall apply solo cuando el schema confirma soporte
 - reintentos sobre un draft ya aplicado se tratan como idempotentes y no reejecutan writes
-- `rollback-draft` da preview/confirm de rollback usando metadata de rollback guardada cuando existe
+- `rollback-draft` da preview/confirm de rollback usando IDs de objetos pfSense capturados durante apply
 - reporta soporte del schema para pasos de write/apply
+
+Validación real completada en este proyecto:
+- target usado: `sniperhack.uzc` / `192.168.0.81`
+- apply creó un alias real y una regla real en pfSense
+- rollback eliminó ambos objetos limpiamente
+- la verificación final confirmó que no quedaron alias ni reglas residuales
+
+Caveats prácticos confirmados por el schema real de pfSense:
+- crear alias vía `POST /firewall/alias`
+- crear regla vía `POST /firewall/rule`
+- los nombres de alias deben respetar el límite de pfSense (31 chars)
+- los valores de `interface` deben usar opciones válidas en minúsculas como `lan` y `wan`
+- rollback es más seguro usando los IDs de objetos pfSense devueltos al crear
 
 ## Presets de automatización
 

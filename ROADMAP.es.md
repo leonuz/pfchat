@@ -30,7 +30,8 @@ Despliegue propuesto:
 Estado actual:
 - implementado para flujos de bloqueo de IP/dispositivo
 - usa drafts guardados, confirmación explícita, auditoría, idempotencia en apply y base de rollback
-- todavía necesita rollback más fuerte basado en identificadores nativos de objetos pfSense y validación real controlada antes de dar confianza de producción
+- ya fue validado contra un target real de laboratorio en pfSense, incluyendo apply y rollback por IDs de objetos pfSense
+- lo que queda ahora es más pulido operativo, acciones administrativas más amplias y productización que viabilidad base de block/apply/rollback
 
 Scope inicial:
 - `block-ip --draft <ip>`

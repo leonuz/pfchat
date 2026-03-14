@@ -30,7 +30,8 @@ Proposed rollout:
 Current status:
 - implemented for IP/device block flows
 - uses saved drafts, explicit confirmation, audit logging, idempotent apply handling, and rollback scaffolding
-- still needs stronger rollback based on pfSense-native object identifiers and controlled live-fire validation before production confidence
+- validated against a real pfSense lab target, including apply and rollback by pfSense object IDs
+- remaining work is now operational polish, broader admin actions, and productization rather than core block/apply/rollback viability
 
 Initial scope:
 - `block-ip --draft <ip>`
