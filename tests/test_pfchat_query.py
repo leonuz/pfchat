@@ -127,6 +127,21 @@ class PfChatQueryTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             pfchat_query.build_block_draft(Client(), 'not-an-ip', 'block-ip')
 
+    def test_build_block_egress_port_draft(self) -> None:
+        class Client:
+            def get_connected_devices(self):
+                return {
+                    'devices': [
+                        {'hostname': 'sniperhack', 'ip_address': '192.168.0.81', 'interface': 'LAN'}
+                    ]
+                }
+            def get_capabilities(self):
+                return {'capabilities': {'firewall_aliases_write': True, 'firewall_apply': True}}
+        draft = pfchat_query.build_block_draft(Client(), 'sniperhack', 'block-egress-port', port='80', proto='tcp')
+        self.assertEqual(draft['proposal']['destination_port'], '80')
+        self.assertEqual(draft['proposal']['rule_protocol'], 'tcp')
+        self.assertIn('egress block', draft['proposal']['rule_description'])
+
     def test_save_and_load_draft_roundtrip(self) -> None:
         draft = {
             'command': 'block-ip',
@@ -215,6 +230,7 @@ class PfChatQueryTests(unittest.TestCase):
         self.assertEqual(client.rule_payload['interface'], ['lan'])
         self.assertEqual(client.rule_payload['source'], 'pfb_iphoneleo_192_168_0_95')
         self.assertEqual(client.rule_payload['destination'], 'any')
+        self.assertEqual(client.rule_payload['protocol'], 'any')
         self.assertEqual(client.apply_payload, {'async': False})
 
     def test_execute_apply_draft_is_idempotent_after_success(self) -> None:

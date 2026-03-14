@@ -347,7 +347,7 @@ def resolve_block_target(client: PfSenseClient, target: str, command: str) -> di
     }
 
 
-def build_block_draft(client: PfSenseClient, target: str, command: str) -> dict[str, Any]:
+def build_block_draft(client: PfSenseClient, target: str, command: str, port: str | None = None, proto: str = 'tcp') -> dict[str, Any]:
     resolved = resolve_block_target(client, target, command)
     ip_value = resolved.get('ip')
     if not ip_value or not is_ip_address(ip_value):
@@ -364,6 +364,7 @@ def build_block_draft(client: PfSenseClient, target: str, command: str) -> dict[
     caps = client.get_capabilities().get('capabilities', {})
     alias_name = build_alias_name(hostname, ip_value)
     private_target = parsed_ip.is_private
+    is_egress_port_block = command == 'block-egress-port'
 
     warnings: list[str] = []
     if private_target:
@@ -374,6 +375,35 @@ def build_block_draft(client: PfSenseClient, target: str, command: str) -> dict[
         warnings.append('Live schema does not currently confirm firewall alias write endpoints.')
     if not caps.get('firewall_apply'):
         warnings.append('Live schema does not currently confirm firewall apply endpoint.')
+
+    if is_egress_port_block:
+        if not port or not str(port).isdigit():
+            raise SystemExit('block-egress-port requires --port with a numeric destination port.')
+        rule_description = f'PfChat draft egress block for {hostname} ({ip_value}) {proto}/{port}'
+        proposal = {
+            'strategy': 'alias_plus_rule_preview',
+            'alias_name': alias_name,
+            'alias_type': 'host',
+            'alias_values': [ip_value],
+            'rule_action': 'block',
+            'rule_direction': 'in',
+            'rule_interface': interface,
+            'rule_protocol': proto.lower(),
+            'destination_port': str(port),
+            'rule_description': rule_description,
+        }
+    else:
+        rule_description = f'PfChat draft block for {hostname} ({ip_value})'
+        proposal = {
+            'strategy': 'alias_plus_rule_preview',
+            'alias_name': alias_name,
+            'alias_type': 'host',
+            'alias_values': [ip_value],
+            'rule_action': 'block',
+            'rule_direction': 'in',
+            'rule_interface': interface,
+            'rule_description': rule_description,
+        }
 
     return {
         'mode': 'draft',
@@ -388,16 +418,7 @@ def build_block_draft(client: PfSenseClient, target: str, command: str) -> dict[
             'ip': ip_value,
             'device': device or None,
         },
-        'proposal': {
-            'strategy': 'alias_plus_rule_preview',
-            'alias_name': alias_name,
-            'alias_type': 'host',
-            'alias_values': [ip_value],
-            'rule_action': 'block',
-            'rule_direction': 'in',
-            'rule_interface': interface,
-            'rule_description': f'PfChat draft block for {hostname} ({ip_value})',
-        },
+        'proposal': proposal,
         'schema_support': {
             'firewall_aliases_write': bool(caps.get('firewall_aliases_write')),
             'firewall_apply': bool(caps.get('firewall_apply')),
@@ -484,11 +505,14 @@ def execute_apply_draft(client: PfSenseClient, draft: dict[str, Any], confirm: b
         'interface': [proposal['rule_interface']],
         'type': proposal['rule_action'],
         'ipprotocol': 'inet',
+        'protocol': proposal.get('rule_protocol', 'any'),
         'source': proposal['alias_name'],
         'destination': 'any',
         'descr': proposal['rule_description'],
         'log': True,
     }
+    if proposal.get('destination_port'):
+        rule_payload['destination_port'] = proposal['destination_port']
 
     alias_result = client.create_firewall_alias(alias_payload)
     rule_result = client.create_firewall_rule(rule_payload)
@@ -732,7 +756,7 @@ def main() -> int:
         default='snapshot',
         choices=[
             "capabilities", "devices", "connections", "logs", "interfaces", "health", "rules", "snapshot",
-            "block-ip", "block-device", "unblock-ip", "unblock-device", "draft-show", "draft-list", "apply-draft", "rollback-draft", "pfchat-managed-list", "pfchat-managed-cleanup"
+            "block-ip", "block-device", "block-egress-port", "unblock-ip", "unblock-device", "draft-show", "draft-list", "apply-draft", "rollback-draft", "pfchat-managed-list", "pfchat-managed-cleanup"
         ],
         help="Dataset to fetch from pfSense",
     )
@@ -746,6 +770,7 @@ def main() -> int:
     parser.add_argument("--contains", help="Free-text contains helper for connections or logs")
     parser.add_argument("--action", choices=["block", "pass", "match"], help="Log action filter helper")
     parser.add_argument("--target", help="Target IP or device identifier for draft block workflows")
+    parser.add_argument("--proto", choices=['tcp', 'udp'], default='tcp', help="Protocol for port-scoped block workflows")
     parser.add_argument("--draft-id", help="Saved draft identifier for draft-show or apply-draft")
     parser.add_argument("--confirm", action="store_true", help="Explicitly confirm a state-changing apply-draft execution")
     args = parser.parse_args()
@@ -801,6 +826,8 @@ def main() -> int:
         data = {"total_rules": len(rules), "rules": rules, "applied_filters": base_filters}
     elif args.command in {"block-ip", "block-device"}:
         data = save_draft(build_block_draft(client, args.target or '', args.command))
+    elif args.command == 'block-egress-port':
+        data = save_draft(build_block_draft(client, args.target or '', args.command, port=args.port, proto=args.proto))
     elif args.command in {'unblock-ip', 'unblock-device'}:
         if not args.target:
             raise SystemExit('Missing --target for unblock workflow.')
