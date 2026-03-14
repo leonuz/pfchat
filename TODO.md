@@ -30,6 +30,11 @@ Project backlog, organized by priority.
 
 ## Low priority
 
+### Ideas to explore
+
+- [ ] Evaluate whether real 72h-per-device historical activity can be exposed through ntopng, Insight, or another pfSense-adjacent source instead of only current states/logs
+- [ ] If no native historical API is available, design a lightweight OpenClaw snapshot/retention workflow to build short-term host activity history over time
+
 - [ ] Support Markdown/HTML report export
 - [ ] Consider additional packaging for distribution outside OpenClaw
 - [ ] Optional external IP enrichment with GeoIP or ASN data
