@@ -144,14 +144,70 @@ class PfChatQueryTests(unittest.TestCase):
         self.assertEqual(listing['total_drafts'], 1)
         self.assertEqual(listing['drafts'][0]['command'], 'block-ip')
 
-    def test_apply_preview_blocks_and_audits(self) -> None:
-        saved = pfchat_query.save_draft({'command': 'block-ip', 'target': {'input': '1.2.3.4'}, 'apply_status': 'draft-only'})
+    def test_apply_preview_audits(self) -> None:
+        saved = pfchat_query.save_draft({
+            'command': 'block-ip',
+            'target': {'input': '1.2.3.4', 'ip': '1.2.3.4'},
+            'proposal': {'rule_interface': 'wan'},
+            'schema_support': {'firewall_aliases_write': True, 'firewall_apply': True},
+            'apply_status': 'draft-only',
+        })
         result = pfchat_query.build_apply_preview(saved)
-        self.assertEqual(result['status'], 'blocked')
+        self.assertEqual(result['status'], 'ready-for-confirmation')
         lines = pfchat_query.AUDIT_LOG.read_text(encoding='utf-8').strip().splitlines()
         self.assertTrue(lines)
         payload = json.loads(lines[-1])
-        self.assertEqual(payload['event'], 'apply_blocked')
+        self.assertEqual(payload['event'], 'apply_preview')
+
+    def test_execute_apply_draft_requires_confirm(self) -> None:
+        class Client:
+            pass
+        saved = pfchat_query.save_draft({
+            'draft_id': 'abc123',
+            'command': 'block-ip',
+            'target': {'input': '1.2.3.4', 'ip': '1.2.3.4'},
+            'proposal': {'rule_interface': 'wan'},
+            'schema_support': {'firewall_aliases_write': True, 'firewall_apply': True},
+            'apply_status': 'draft-only',
+        })
+        result = pfchat_query.execute_apply_draft(Client(), saved, confirm=False)
+        self.assertEqual(result['status'], 'ready-for-confirmation')
+
+    def test_execute_apply_draft_runs_writes_when_confirmed(self) -> None:
+        class Client:
+            def get_capabilities(self):
+                return {'capabilities': {'firewall_aliases_write': True, 'firewall_rule_write': True, 'firewall_apply': True}}
+            def create_firewall_alias(self, payload):
+                self.alias_payload = payload
+                return {'status': 'alias-ok'}
+            def create_firewall_rule(self, payload):
+                self.rule_payload = payload
+                return {'status': 'rule-ok'}
+            def apply_firewall_changes(self, payload):
+                self.apply_payload = payload
+                return {'status': 'apply-ok'}
+        client = Client()
+        saved = pfchat_query.save_draft({
+            'draft_id': 'apply123',
+            'command': 'block-device',
+            'target': {'input': 'iphoneLeo', 'ip': '192.168.0.95', 'hostname': 'iphoneLeo'},
+            'proposal': {
+                'alias_name': 'pfchat_block_iphoneLeo_192_168_0_95',
+                'alias_type': 'host',
+                'alias_values': ['192.168.0.95'],
+                'rule_action': 'block',
+                'rule_direction': 'in',
+                'rule_interface': 'LAN',
+                'rule_description': 'PfChat draft block for iphoneLeo (192.168.0.95)',
+            },
+            'schema_support': {'firewall_aliases_write': True, 'firewall_apply': True},
+            'apply_status': 'draft-only',
+        })
+        result = pfchat_query.execute_apply_draft(client, saved, confirm=True)
+        self.assertEqual(result['status'], 'applied')
+        self.assertEqual(client.alias_payload['name'], 'pfchat_block_iphoneLeo_192_168_0_95')
+        self.assertEqual(client.rule_payload['interface'], 'LAN')
+        self.assertEqual(client.apply_payload, {'async': False})
 
 
 if __name__ == '__main__':

@@ -410,7 +410,7 @@ def build_block_draft(client: PfSenseClient, target: str, command: str) -> dict[
 def build_apply_preview(draft: dict[str, Any]) -> dict[str, Any]:
     event = {
         'ts': int(time.time()),
-        'event': 'apply_blocked',
+        'event': 'apply_preview',
         'draft_id': draft.get('draft_id'),
         'command': draft.get('command'),
         'target': draft.get('target', {}),
@@ -419,14 +419,91 @@ def build_apply_preview(draft: dict[str, Any]) -> dict[str, Any]:
     return {
         'mode': 'apply-preview',
         'draft_id': draft.get('draft_id'),
-        'status': 'blocked',
-        'reason': 'Apply is not implemented yet for firewall writes. Draft persistence and audit trail are ready; live mutation remains intentionally disabled.',
+        'status': 'ready-for-confirmation',
         'draft': draft,
         'next_steps': [
             'Review the saved draft details.',
-            'Implement write endpoints, explicit confirmation, and rollback before enabling apply.',
+            'Re-run apply-draft with --confirm to execute alias/rule/apply writes.',
         ],
     }
+
+
+def require_apply_readiness(draft: dict[str, Any]) -> None:
+    target = draft.get('target', {}) if isinstance(draft, dict) else {}
+    proposal = draft.get('proposal', {}) if isinstance(draft, dict) else {}
+    schema_support = draft.get('schema_support', {}) if isinstance(draft, dict) else {}
+    ip_value = str(target.get('ip') or '').strip()
+    if not ip_value or not is_ip_address(ip_value):
+        raise SystemExit('Draft is missing a valid resolved IP address.')
+    if not proposal.get('rule_interface'):
+        raise SystemExit('Draft is missing a resolved interface. Refusing to apply.')
+    if not schema_support.get('firewall_aliases_write'):
+        raise SystemExit('Live schema does not confirm firewall alias write support.')
+    if not schema_support.get('firewall_apply'):
+        raise SystemExit('Live schema does not confirm firewall apply support.')
+
+
+def execute_apply_draft(client: PfSenseClient, draft: dict[str, Any], confirm: bool = False) -> dict[str, Any]:
+    require_apply_readiness(draft)
+    if not confirm:
+        return build_apply_preview(draft)
+
+    target = draft['target']
+    proposal = draft['proposal']
+    capabilities = client.get_capabilities().get('capabilities', {})
+    if not capabilities.get('firewall_aliases_write'):
+        raise SystemExit('Current live schema no longer confirms firewall alias write support.')
+    if not capabilities.get('firewall_rule_write'):
+        raise SystemExit('Current live schema does not confirm firewall rule write support.')
+    if not capabilities.get('firewall_apply'):
+        raise SystemExit('Current live schema no longer confirms firewall apply support.')
+
+    alias_payload = {
+        'name': proposal['alias_name'],
+        'type': proposal['alias_type'],
+        'address': proposal['alias_values'],
+        'descr': proposal['rule_description'],
+        'detail': f"Created by PfChat draft {draft.get('draft_id')}",
+    }
+    rule_payload = {
+        'interface': proposal['rule_interface'],
+        'type': proposal['rule_action'],
+        'ipprotocol': 'inet',
+        'source': {'address': proposal['alias_name']},
+        'destination': {'any': True},
+        'direction': proposal['rule_direction'],
+        'descr': proposal['rule_description'],
+    }
+
+    alias_result = client.create_firewall_alias(alias_payload)
+    rule_result = client.create_firewall_rule(rule_payload)
+    apply_result = client.apply_firewall_changes({'async': False})
+
+    applied = {
+        'mode': 'apply',
+        'draft_id': draft.get('draft_id'),
+        'status': 'applied',
+        'target': target,
+        'proposal': proposal,
+        'results': {
+            'alias': alias_result,
+            'rule': rule_result,
+            'apply': apply_result,
+        },
+        'applied_at': int(time.time()),
+    }
+    draft['apply_status'] = 'applied'
+    draft['applied_at'] = applied['applied_at']
+    draft['last_apply_result'] = applied['results']
+    draft_path(str(draft['draft_id'])).write_text(json.dumps(draft, indent=2, ensure_ascii=False), encoding='utf-8')
+    append_audit({
+        'ts': applied['applied_at'],
+        'event': 'apply_executed',
+        'draft_id': draft.get('draft_id'),
+        'command': draft.get('command'),
+        'target': target,
+    })
+    return applied
 
 
 def render_view(data: Any, view: str | None) -> Any:
@@ -478,11 +555,12 @@ def main() -> int:
     parser.add_argument("--action", choices=["block", "pass", "match"], help="Log action filter helper")
     parser.add_argument("--target", help="Target IP or device identifier for draft block workflows")
     parser.add_argument("--draft-id", help="Saved draft identifier for draft-show or apply-draft")
+    parser.add_argument("--confirm", action="store_true", help="Explicitly confirm a state-changing apply-draft execution")
     args = parser.parse_args()
     args = apply_once_preset(args)
 
     base_filters = parse_filters(args.filter)
-    command_needs_client = args.command not in {'draft-show', 'draft-list', 'apply-draft'}
+    command_needs_client = args.command not in {'draft-show', 'draft-list'}
     if command_needs_client:
         host, api_key, verify_ssl = load_config()
         client = PfSenseClient(host=host, api_key=api_key, verify_ssl=verify_ssl)
@@ -540,7 +618,7 @@ def main() -> int:
     elif args.command == 'apply-draft':
         if not args.draft_id:
             raise SystemExit('Missing --draft-id for apply-draft.')
-        data = build_apply_preview(load_draft(args.draft_id))
+        data = execute_apply_draft(client, load_draft(args.draft_id), confirm=args.confirm)
     else:
         data = client.get_snapshot(limit=args.limit)
 

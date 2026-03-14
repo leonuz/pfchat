@@ -60,29 +60,39 @@ class PfSenseClient:
         }
         self._schema_cache_path().write_text(json.dumps(payload, indent=2), encoding='utf-8')
 
-    def _get(self, path: str, params: dict[str, Any] | None = None) -> Any:
+    def _request(self, method: str, path: str, params: dict[str, Any] | None = None, body: Any = None) -> Any:
         url = f"{self.base_url}/{path.lstrip('/')}"
         if params:
             url = f"{url}?{urllib.parse.urlencode(params, doseq=True)}"
 
-        req = urllib.request.Request(
-            url,
-            headers={
-                "X-API-Key": self.api_key,
-                "Accept": "application/json",
-            },
-        )
+        data = None
+        headers = {
+            "X-API-Key": self.api_key,
+            "Accept": "application/json",
+        }
+        if body is not None:
+            data = json.dumps(body).encode()
+            headers["Content-Type"] = "application/json"
+
+        req = urllib.request.Request(url, data=data, method=method.upper(), headers=headers)
 
         try:
             with urllib.request.urlopen(req, context=self.ssl_ctx, timeout=20) as resp:
-                return json.loads(resp.read().decode())
+                raw = resp.read().decode()
+                return json.loads(raw) if raw else {}
         except urllib.error.HTTPError as exc:
-            body = exc.read().decode(errors="replace")
+            body_text = exc.read().decode(errors="replace")
             if exc.code in (401, 403):
                 raise RuntimeError("Authentication failed against pfSense REST API") from exc
-            raise RuntimeError(f"HTTP {exc.code} on {path}: {body[:400]}") from exc
+            raise RuntimeError(f"HTTP {exc.code} on {path}: {body_text[:400]}") from exc
         except urllib.error.URLError as exc:
             raise RuntimeError(f"Cannot connect to pfSense: {exc.reason}") from exc
+
+    def _get(self, path: str, params: dict[str, Any] | None = None) -> Any:
+        return self._request("GET", path, params=params)
+
+    def _post(self, path: str, body: Any = None, params: dict[str, Any] | None = None) -> Any:
+        return self._request("POST", path, params=params, body=body)
 
     @staticmethod
     def _unwrap(data: Any) -> Any:
@@ -127,6 +137,21 @@ class PfSenseClient:
         for path in self._filter_candidates_by_schema(paths):
             try:
                 return self._unwrap(self._get(path, params))
+            except RuntimeError as exc:
+                message = str(exc)
+                if message.startswith("HTTP 404 on "):
+                    last_not_found = exc
+                    continue
+                raise
+        if last_not_found is not None:
+            raise last_not_found
+        raise RuntimeError("No supported endpoint candidates were provided")
+
+    def _post_first_supported(self, paths: list[str], body: dict[str, Any]) -> Any:
+        last_not_found: RuntimeError | None = None
+        for path in self._filter_candidates_by_schema(paths):
+            try:
+                return self._unwrap(self._post(path, body=body))
             except RuntimeError as exc:
                 message = str(exc)
                 if message.startswith("HTTP 404 on "):
@@ -201,6 +226,23 @@ class PfSenseClient:
             "firewall/rule",
         ], filters)
 
+    def create_firewall_alias(self, payload: dict[str, Any]) -> Any:
+        return self._post_first_supported([
+            "firewall/aliases",
+            "firewall/alias",
+        ], payload)
+
+    def create_firewall_rule(self, payload: dict[str, Any]) -> Any:
+        return self._post_first_supported([
+            "firewall/rules",
+            "firewall/rule",
+        ], payload)
+
+    def apply_firewall_changes(self, payload: dict[str, Any] | None = None) -> Any:
+        return self._post_first_supported([
+            "firewall/apply",
+        ], payload or {})
+
     @staticmethod
     def _extract_ip(value: str) -> str:
         """Extract the IP portion from values like 192.168.0.91:443 or [IPv6]:443."""
@@ -231,7 +273,6 @@ class PfSenseClient:
             if not isinstance(state, dict):
                 continue
             interface = state.get('interface') or state.get('if') or ''
-            direction = str(state.get('direction') or '').lower()
             for field, peer_field in (("source", "destination"), ("destination", "source")):
                 ip = self._extract_ip(state.get(field, ""))
                 peer_ip = self._extract_ip(state.get(peer_field, ""))
@@ -379,6 +420,7 @@ class PfSenseClient:
                 "system_status": any(path in supported for path in ["status/system", "system/stats", "system/status"]),
                 "gateways": any(path in supported for path in ["status/gateways", "routing/gateways", "routing/gateway", "status/gateway", "system/gateways"]),
                 "firewall_aliases_write": any(path in supported for path in ["firewall/aliases", "firewall/alias"]),
+                "firewall_rule_write": any(path in supported for path in ["firewall/rules", "firewall/rule"]),
                 "firewall_apply": "firewall/apply" in supported,
             },
         }
