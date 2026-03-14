@@ -242,8 +242,10 @@ Comportamiento actual:
 
 Validación real completada en este proyecto:
 - target usado: `sniperhack.uzc` / `192.168.0.81`
-- apply creó un alias real y una regla real en pfSense
-- rollback eliminó ambos objetos limpiamente
+- se validó en pfSense real el flujo completo de bloqueo total de host con apply/rollback
+- también se validó en pfSense real un bloqueo de salida específico `tcp/80` para `sniperhack`
+- apply creó aliases y reglas reales en pfSense
+- rollback eliminó los objetos limpiamente
 - la verificación final confirmó que no quedaron alias ni reglas residuales
 
 Caveats prácticos confirmados por el schema real de pfSense:

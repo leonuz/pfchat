@@ -25,6 +25,7 @@ Project backlog, organized by priority.
 - [x] Improve snapshot output to summarize findings more compactly
 - [x] Add real investigation examples under `references/`
 - [ ] Evaluate support for multiple LAN/VLAN segments in device inventory
+- [ ] Extend host-specific egress blocking beyond the current single-port draft/apply/rollback path (multiple ports, richer protocol handling, target-aware unblock by port)
 - [x] Add stricter `.env` validation
 
 ## Low priority

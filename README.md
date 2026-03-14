@@ -242,8 +242,10 @@ Current behavior:
 
 Live-fire validation completed in this project:
 - target used: `sniperhack.uzc` / `192.168.0.81`
-- apply created a real alias and firewall rule on pfSense
-- rollback removed both objects cleanly
+- full-device block/apply/rollback was validated on real pfSense
+- host-specific egress block `tcp/80` for `sniperhack` was also validated on real pfSense
+- apply created real aliases and firewall rules on pfSense
+- rollback removed the objects cleanly
 - final verification confirmed no residual alias or rule remained
 
 Practical caveats from the real pfSense schema:
