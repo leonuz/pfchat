@@ -216,6 +216,7 @@ python3 pfchat/scripts/pfchat_query.py block-ip --target 1.2.3.4
 python3 pfchat/scripts/pfchat_query.py block-device --target iphoneLeo
 python3 pfchat/scripts/pfchat_query.py block-device --target 192.168.0.95
 python3 pfchat/scripts/pfchat_query.py block-egress-port --target sniperhack --port 80 --proto tcp
+python3 pfchat/scripts/pfchat_query.py block-egress-proto --target sniperhack --proto icmp
 python3 pfchat/scripts/pfchat_query.py unblock-ip --target 1.2.3.4
 python3 pfchat/scripts/pfchat_query.py unblock-device --target sniperhack
 python3 pfchat/scripts/pfchat_query.py draft-list
@@ -233,7 +234,7 @@ Comportamiento actual:
 - resuelve el target
 - propone metadata de alias/regla
 - guarda la propuesta localmente con un `draft_id`
-- soporta `draft-show`, `draft-list`, `apply-draft`, `rollback-draft`, `pfchat-managed-list`, `pfchat-managed-cleanup`, `unblock-ip`, `unblock-device` y `block-egress-port`
+- soporta `draft-show`, `draft-list`, `apply-draft`, `rollback-draft`, `pfchat-managed-list`, `pfchat-managed-cleanup`, `unblock-ip`, `unblock-device`, `block-egress-port` y `block-egress-proto`
 - `apply-draft` sin `--confirm` solo hace preview y audita la intención
 - `apply-draft --confirm` ejecuta alias + regla + firewall apply solo cuando el schema confirma soporte
 - reintentos sobre un draft ya aplicado se tratan como idempotentes y no reejecutan writes

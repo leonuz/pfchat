@@ -365,6 +365,7 @@ def build_block_draft(client: PfSenseClient, target: str, command: str, port: st
     alias_name = build_alias_name(hostname, ip_value)
     private_target = parsed_ip.is_private
     is_egress_port_block = command == 'block-egress-port'
+    is_egress_proto_block = command == 'block-egress-proto'
 
     warnings: list[str] = []
     if private_target:
@@ -390,6 +391,21 @@ def build_block_draft(client: PfSenseClient, target: str, command: str, port: st
             'rule_interface': interface,
             'rule_protocol': proto.lower(),
             'destination_port': str(port),
+            'rule_description': rule_description,
+        }
+    elif is_egress_proto_block:
+        if proto.lower() != 'icmp':
+            raise SystemExit('block-egress-proto currently supports only --proto icmp.')
+        rule_description = f'PfChat draft egress block for {hostname} ({ip_value}) {proto}'
+        proposal = {
+            'strategy': 'alias_plus_rule_preview',
+            'alias_name': alias_name,
+            'alias_type': 'host',
+            'alias_values': [ip_value],
+            'rule_action': 'block',
+            'rule_direction': 'in',
+            'rule_interface': interface,
+            'rule_protocol': 'icmp',
             'rule_description': rule_description,
         }
     else:
@@ -756,7 +772,7 @@ def main() -> int:
         default='snapshot',
         choices=[
             "capabilities", "devices", "connections", "logs", "interfaces", "health", "rules", "snapshot",
-            "block-ip", "block-device", "block-egress-port", "unblock-ip", "unblock-device", "draft-show", "draft-list", "apply-draft", "rollback-draft", "pfchat-managed-list", "pfchat-managed-cleanup"
+            "block-ip", "block-device", "block-egress-port", "block-egress-proto", "unblock-ip", "unblock-device", "draft-show", "draft-list", "apply-draft", "rollback-draft", "pfchat-managed-list", "pfchat-managed-cleanup"
         ],
         help="Dataset to fetch from pfSense",
     )
@@ -770,7 +786,7 @@ def main() -> int:
     parser.add_argument("--contains", help="Free-text contains helper for connections or logs")
     parser.add_argument("--action", choices=["block", "pass", "match"], help="Log action filter helper")
     parser.add_argument("--target", help="Target IP or device identifier for draft block workflows")
-    parser.add_argument("--proto", choices=['tcp', 'udp'], default='tcp', help="Protocol for port-scoped block workflows")
+    parser.add_argument("--proto", choices=['tcp', 'udp', 'icmp'], default='tcp', help="Protocol for egress block workflows")
     parser.add_argument("--draft-id", help="Saved draft identifier for draft-show or apply-draft")
     parser.add_argument("--confirm", action="store_true", help="Explicitly confirm a state-changing apply-draft execution")
     args = parser.parse_args()
@@ -828,6 +844,8 @@ def main() -> int:
         data = save_draft(build_block_draft(client, args.target or '', args.command))
     elif args.command == 'block-egress-port':
         data = save_draft(build_block_draft(client, args.target or '', args.command, port=args.port, proto=args.proto))
+    elif args.command == 'block-egress-proto':
+        data = save_draft(build_block_draft(client, args.target or '', args.command, proto=args.proto))
     elif args.command in {'unblock-ip', 'unblock-device'}:
         if not args.target:
             raise SystemExit('Missing --target for unblock workflow.')

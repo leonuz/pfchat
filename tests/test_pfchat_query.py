@@ -142,6 +142,21 @@ class PfChatQueryTests(unittest.TestCase):
         self.assertEqual(draft['proposal']['rule_protocol'], 'tcp')
         self.assertIn('egress block', draft['proposal']['rule_description'])
 
+    def test_build_block_egress_proto_icmp_draft(self) -> None:
+        class Client:
+            def get_connected_devices(self):
+                return {
+                    'devices': [
+                        {'hostname': 'sniperhack', 'ip_address': '192.168.0.81', 'interface': 'LAN'}
+                    ]
+                }
+            def get_capabilities(self):
+                return {'capabilities': {'firewall_aliases_write': True, 'firewall_apply': True}}
+        draft = pfchat_query.build_block_draft(Client(), 'sniperhack', 'block-egress-proto', proto='icmp')
+        self.assertEqual(draft['proposal']['rule_protocol'], 'icmp')
+        self.assertNotIn('destination_port', draft['proposal'])
+        self.assertIn('icmp', draft['proposal']['rule_description'])
+
     def test_save_and_load_draft_roundtrip(self) -> None:
         draft = {
             'command': 'block-ip',
