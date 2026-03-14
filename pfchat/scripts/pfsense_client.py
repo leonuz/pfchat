@@ -229,6 +229,12 @@ class PfSenseClient:
             "firewall/rule",
         ], filters)
 
+    def get_firewall_aliases(self) -> list[dict[str, Any]]:
+        return self._get_first_supported([
+            "firewall/aliases",
+            "firewall/alias",
+        ])
+
     def create_firewall_alias(self, payload: dict[str, Any]) -> Any:
         return self._post_first_supported([
             "firewall/alias",

@@ -269,6 +269,45 @@ class PfChatQueryTests(unittest.TestCase):
         self.assertEqual(client.alias_delete_payload, 3)
         self.assertEqual(client.rule_delete_payload, 5)
 
+    def test_list_managed_objects_filters_pfchat_entries(self) -> None:
+        class Client:
+            def get_firewall_aliases(self):
+                return [
+                    {'id': 1, 'name': 'pfb_iphoneleo_192_168_0_95', 'descr': 'PfChat draft block for iphoneLeo (192.168.0.95)'},
+                    {'id': 2, 'name': 'Fernanda', 'descr': 'normal alias'},
+                ]
+            def get_firewall_rules(self):
+                return [
+                    {'id': 5, 'descr': 'PfChat draft block for iphoneLeo (192.168.0.95)', 'source': 'pfb_iphoneleo_192_168_0_95'},
+                    {'id': 6, 'descr': 'OpenVPN', 'source': 'any'},
+                ]
+        result = pfchat_query.list_managed_objects(Client())
+        self.assertEqual(result['total_aliases'], 1)
+        self.assertEqual(result['total_rules'], 1)
+
+    def test_cleanup_managed_objects_confirmed(self) -> None:
+        class Client:
+            def get_firewall_aliases(self):
+                return [{'id': 3, 'name': 'pfb_sniperhack_192_168_0_81', 'descr': 'PfChat draft block for sniperhack (192.168.0.81)'}]
+            def get_firewall_rules(self):
+                return [{'id': 5, 'descr': 'PfChat draft block for sniperhack (192.168.0.81)', 'source': 'pfb_sniperhack_192_168_0_81'}]
+            def get_capabilities(self):
+                return {'capabilities': {'firewall_apply': True, 'firewall_aliases_delete': True, 'firewall_rule_delete': True}}
+            def delete_firewall_rule(self, rule_id):
+                self.rule_id = rule_id
+                return {'status': 'rule-delete-ok'}
+            def delete_firewall_alias(self, alias_id):
+                self.alias_id = alias_id
+                return {'status': 'alias-delete-ok'}
+            def apply_firewall_changes(self, payload):
+                self.apply_payload = payload
+                return {'status': 'apply-ok'}
+        client = Client()
+        result = pfchat_query.cleanup_managed_objects(client, confirm=True)
+        self.assertEqual(result['status'], 'cleaned')
+        self.assertEqual(client.rule_id, 5)
+        self.assertEqual(client.alias_id, 3)
+
 
 if __name__ == '__main__':
     unittest.main()

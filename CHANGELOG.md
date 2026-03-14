@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - Draft idempotence and rollback scaffolding with `rollback-draft`, stored rollback metadata, and delete/apply support paths
 - Mocked integration coverage for the end-to-end apply/rollback administrative flow
 - Real pfSense validation for block/apply/rollback against a controlled lab target, plus rollback by pfSense object IDs
+- Managed-object operations with `pfchat-managed-list` and `pfchat-managed-cleanup` for PfChat-created aliases and rules
 - English-first repository document layout: `README.md`, `TODO.md`, and `CHANGELOG.md` are now the canonical English docs, with Spanish variants in `README.es.md`, `TODO.es.md`, and `CHANGELOG.es.md`
 - `TELEGRAM.md` documenting the recommended workflow for using PfChat through OpenClaw on Telegram
 - Documentation for the daily email summary use case through OpenClaw + Resend

@@ -528,6 +528,64 @@ def execute_apply_draft(client: PfSenseClient, draft: dict[str, Any], confirm: b
     return applied
 
 
+def is_pfchat_managed_alias(entry: dict[str, Any]) -> bool:
+    name = str(entry.get('name') or '')
+    descr = str(entry.get('descr') or '')
+    details = entry.get('detail') or []
+    detail_text = ' '.join(str(x) for x in details) if isinstance(details, list) else str(details)
+    return name.startswith('pfb_') or 'PfChat draft block' in descr or 'Created by PfChat draft' in detail_text
+
+
+def is_pfchat_managed_rule(entry: dict[str, Any]) -> bool:
+    descr = str(entry.get('descr') or '')
+    source = str(entry.get('source') or '')
+    return 'PfChat draft block' in descr or source.startswith('pfb_')
+
+
+def list_managed_objects(client: PfSenseClient) -> dict[str, Any]:
+    aliases = [item for item in client.get_firewall_aliases() if isinstance(item, dict) and is_pfchat_managed_alias(item)]
+    rules = [item for item in client.get_firewall_rules() if isinstance(item, dict) and is_pfchat_managed_rule(item)]
+    return {
+        'total_aliases': len(aliases),
+        'total_rules': len(rules),
+        'aliases': aliases,
+        'rules': rules,
+    }
+
+
+def cleanup_managed_objects(client: PfSenseClient, confirm: bool = False) -> dict[str, Any]:
+    managed = list_managed_objects(client)
+    if not confirm:
+        append_audit({'ts': int(time.time()), 'event': 'managed_cleanup_preview', 'counts': {'aliases': managed['total_aliases'], 'rules': managed['total_rules']}})
+        return {
+            'mode': 'managed-cleanup-preview',
+            'status': 'ready-for-confirmation',
+            'managed': managed,
+            'next_steps': ['Re-run pfchat-managed-cleanup with --confirm to delete these PfChat-managed objects.'],
+        }
+
+    capabilities = client.get_capabilities().get('capabilities', {})
+    if not capabilities.get('firewall_apply'):
+        raise SystemExit('Current live schema does not confirm firewall apply support for managed cleanup.')
+
+    results = {'rule_delete': [], 'alias_delete': []}
+    if capabilities.get('firewall_rule_delete'):
+        for rule in managed['rules']:
+            if rule.get('id') is not None:
+                results['rule_delete'].append(client.delete_firewall_rule(rule['id']))
+    if capabilities.get('firewall_aliases_delete'):
+        for alias in managed['aliases']:
+            if alias.get('id') is not None:
+                results['alias_delete'].append(client.delete_firewall_alias(alias['id']))
+    results['apply'] = client.apply_firewall_changes({'async': False})
+    append_audit({'ts': int(time.time()), 'event': 'managed_cleanup_executed', 'counts': {'aliases': len(results['alias_delete']), 'rules': len(results['rule_delete'])}})
+    return {
+        'mode': 'managed-cleanup',
+        'status': 'cleaned',
+        'results': results,
+    }
+
+
 def execute_rollback_draft(client: PfSenseClient, draft: dict[str, Any], confirm: bool = False) -> dict[str, Any]:
     if draft.get('apply_status') != 'applied':
         raise SystemExit('Rollback requires a previously applied draft.')
@@ -612,7 +670,7 @@ def main() -> int:
         default='snapshot',
         choices=[
             "capabilities", "devices", "connections", "logs", "interfaces", "health", "rules", "snapshot",
-            "block-ip", "block-device", "draft-show", "draft-list", "apply-draft", "rollback-draft"
+            "block-ip", "block-device", "draft-show", "draft-list", "apply-draft", "rollback-draft", "pfchat-managed-list", "pfchat-managed-cleanup"
         ],
         help="Dataset to fetch from pfSense",
     )
@@ -695,6 +753,10 @@ def main() -> int:
         if not args.draft_id:
             raise SystemExit('Missing --draft-id for rollback-draft.')
         data = execute_rollback_draft(client, load_draft(args.draft_id), confirm=args.confirm)
+    elif args.command == 'pfchat-managed-list':
+        data = list_managed_objects(client)
+    elif args.command == 'pfchat-managed-cleanup':
+        data = cleanup_managed_objects(client, confirm=args.confirm)
     else:
         data = client.get_snapshot(limit=args.limit)
 

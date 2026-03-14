@@ -221,13 +221,16 @@ python3 pfchat/scripts/pfchat_query.py apply-draft --draft-id <id>
 python3 pfchat/scripts/pfchat_query.py apply-draft --draft-id <id> --confirm
 python3 pfchat/scripts/pfchat_query.py rollback-draft --draft-id <id>
 python3 pfchat/scripts/pfchat_query.py rollback-draft --draft-id <id> --confirm
+python3 pfchat/scripts/pfchat_query.py pfchat-managed-list
+python3 pfchat/scripts/pfchat_query.py pfchat-managed-cleanup
+python3 pfchat/scripts/pfchat_query.py pfchat-managed-cleanup --confirm
 ```
 
 Comportamiento actual:
 - resuelve el target
 - propone metadata de alias/regla
 - guarda la propuesta localmente con un `draft_id`
-- soporta `draft-show`, `draft-list`, `apply-draft` y `rollback-draft`
+- soporta `draft-show`, `draft-list`, `apply-draft`, `rollback-draft`, `pfchat-managed-list` y `pfchat-managed-cleanup`
 - `apply-draft` sin `--confirm` solo hace preview y audita la intención
 - `apply-draft --confirm` ejecuta alias + regla + firewall apply solo cuando el schema confirma soporte
 - reintentos sobre un draft ya aplicado se tratan como idempotentes y no reejecutan writes
