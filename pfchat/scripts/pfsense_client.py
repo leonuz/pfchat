@@ -158,7 +158,10 @@ class PfSenseClient:
         params: dict[str, Any] = {"limit": limit}
         if filters:
             params.update(filters)
-        return self._unwrap(self._get("firewall/states", params))
+        return self._get_first_supported([
+            "firewall/states",
+            "firewall/state",
+        ], params)
 
     def get_firewall_logs(self, limit: int = 200) -> list[dict[str, Any]]:
         return self._get_first_supported([
@@ -170,6 +173,8 @@ class PfSenseClient:
     def get_interfaces(self) -> list[dict[str, Any]]:
         return self._get_first_supported([
             "status/interfaces",
+            "interfaces",
+            "interface",
         ])
 
     def get_system_stats(self) -> dict[str, Any]:
@@ -187,9 +192,10 @@ class PfSenseClient:
         ])
 
     def get_firewall_rules(self, filters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-        if filters:
-            return self._unwrap(self._get("firewall/rules", filters))
-        return self._unwrap(self._get("firewall/rules"))
+        return self._get_first_supported([
+            "firewall/rules",
+            "firewall/rule",
+        ], filters)
 
     @staticmethod
     def _extract_ip(value: str) -> str:
@@ -362,10 +368,10 @@ class PfSenseClient:
             "capabilities": {
                 "devices_arp": any(path in supported for path in ["diagnostics/arp_table", "status/arp", "status/arp-table", "diag/arp", "diagnostics/arp"]),
                 "devices_dhcp": any(path in supported for path in ["status/dhcp_server/leases", "services/dhcpd/leases", "status/dhcp_leases", "status/dhcp/leases"]),
-                "connections": "firewall/states" in supported,
+                "connections": any(path in supported for path in ["firewall/states", "firewall/state"]),
                 "logs_firewall": any(path in supported for path in ["status/logs/firewall", "status/log/firewall", "log/firewall"]),
-                "rules": "firewall/rules" in supported,
-                "interfaces": "status/interfaces" in supported,
+                "rules": any(path in supported for path in ["firewall/rules", "firewall/rule"]),
+                "interfaces": any(path in supported for path in ["status/interfaces", "interfaces", "interface"]),
                 "system_status": any(path in supported for path in ["status/system", "system/stats"]),
                 "gateways": any(path in supported for path in ["status/gateways", "routing/gateways", "status/gateway", "system/gateways"]),
             },

@@ -19,14 +19,19 @@ Use these endpoint groups when querying pfSense through `scripts/pfchat_query.py
   - degraded fallback:
     - infer internal hosts from `firewall/states`
 - `connections`
-  - `firewall/states`
+  - preferred candidates:
+    - `firewall/states`
+    - `firewall/state`
 - `logs`
   - fallback sequence:
     1. `status/logs/firewall`
     2. `status/log/firewall`
     3. `log/firewall`
 - `interfaces`
-  - `status/interfaces`
+  - preferred candidates:
+    - `status/interfaces`
+    - `interfaces`
+    - `interface`
 - `health`
   - preferred candidates:
     - `system/stats`
@@ -38,7 +43,9 @@ Use these endpoint groups when querying pfSense through `scripts/pfchat_query.py
   - also includes:
     - `status/interfaces`
 - `rules`
-  - `firewall/rules`
+  - preferred candidates:
+    - `firewall/rules`
+    - `firewall/rule`
 
 ## Notes
 

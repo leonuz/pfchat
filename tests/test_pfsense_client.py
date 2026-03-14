@@ -46,18 +46,22 @@ class PfSenseClientTests(unittest.TestCase):
         self.client._supported_paths = {
             'diagnostics/arp_table',
             'status/dhcp_server/leases',
-            'firewall/states',
+            'firewall/state',
             'status/logs/firewall',
-            'firewall/rules',
-            'status/interfaces',
+            'firewall/rule',
+            'interfaces',
             'status/system',
-            'status/gateways',
+            'routing/gateways',
         }
         caps = self.client.get_capabilities()
         self.assertTrue(caps['openapi_available'])
         self.assertIn('schema_cache', caps)
         self.assertTrue(caps['capabilities']['devices_arp'])
         self.assertTrue(caps['capabilities']['devices_dhcp'])
+        self.assertTrue(caps['capabilities']['connections'])
+        self.assertTrue(caps['capabilities']['rules'])
+        self.assertTrue(caps['capabilities']['interfaces'])
+        self.assertTrue(caps['capabilities']['gateways'])
 
     def test_summarize_snapshot_builds_highlights(self) -> None:
         snapshot = {

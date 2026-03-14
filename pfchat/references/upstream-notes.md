@@ -86,6 +86,10 @@ The local schema shows a useful pattern for future compatibility work:
 
 For future releases, PfChat should keep preferring read-only status endpoints for live inspection, while documenting config endpoints separately for administrative write actions.
 
+Applied compatibility rule in PfChat:
+- prefer plural read/status endpoints first
+- allow singular/plural fallback variants when the live schema confirms a different shape on another installation
+
 ## Recommended PfChat follow-up work
 
 - Prefer schema-discovered endpoints over guessed legacy fallback paths.
