@@ -4,10 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Planned
+## [0.2.0] - 2026-03-14
+
+### Added
 
 - Safe administrative firewall actions for blocking an IP/device through a `draft -> preview -> apply -> audit` workflow
-- Roadmap entries documenting the staged rollout for safe firewall write actions
+- Local draft persistence, audit logging, and guarded `apply-draft --confirm`
+- Rollback support using pfSense object IDs returned by real create calls
+- Managed-object operations with `pfchat-managed-list`, `pfchat-managed-cleanup`, `unblock-ip`, and `unblock-device`
+- Host-specific egress blocking for `tcp/udp` destination ports via `block-egress-port`
+- Host-specific ICMP egress blocking via `block-egress-proto --proto icmp`
+- Mocked integration coverage for the administrative apply/rollback lifecycle
+
+### Validated
+
+- Real pfSense validation for full-device block/apply/rollback against `sniperhack.uzc` (`192.168.0.81`)
+- Real pfSense validation for host-specific `tcp/80` egress block/apply/rollback against `sniperhack.uzc`
+- Real pfSense validation for host-specific ICMP egress block/apply/rollback against `sniperhack.uzc`
 
 ## [0.1.1] - 2026-03-13
 

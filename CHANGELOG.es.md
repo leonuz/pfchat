@@ -4,10 +4,23 @@ Todos los cambios relevantes de este proyecto se documentan aquí.
 
 ## [Unreleased]
 
-### Planeado
+## [0.2.0] - 2026-03-14
 
-- Acciones administrativas seguras de firewall para bloquear una IP/dispositivo mediante un flujo `draft -> preview -> apply -> audit`
-- Entradas de roadmap que documentan el despliegue por etapas de writes seguros sobre el firewall
+### Añadido
+
+- Acciones administrativas seguras de firewall para bloquear una IP/dispositivo mediante flujo `draft -> preview -> apply -> audit`
+- Persistencia local de drafts, auditoría y `apply-draft --confirm` con guardrails
+- Rollback usando IDs de objetos pfSense devueltos por llamadas reales de creación
+- Operaciones de objetos gestionados con `pfchat-managed-list`, `pfchat-managed-cleanup`, `unblock-ip` y `unblock-device`
+- Bloqueo de salida específico por host para puertos `tcp/udp` mediante `block-egress-port`
+- Bloqueo de salida ICMP por host mediante `block-egress-proto --proto icmp`
+- Cobertura de integración mockeada para el ciclo administrativo de apply/rollback
+
+### Validado
+
+- Validación real en pfSense para block/apply/rollback de host completo sobre `sniperhack.uzc` (`192.168.0.81`)
+- Validación real en pfSense para bloqueo de salida `tcp/80` por host sobre `sniperhack.uzc`
+- Validación real en pfSense para bloqueo de salida ICMP por host sobre `sniperhack.uzc`
 
 ## [0.1.1] - 2026-03-13
 
