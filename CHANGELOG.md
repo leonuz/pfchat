@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 - Local draft persistence plus audit logging with `draft-list`, `draft-show`, and `apply-draft`
 - Confirmed `apply-draft --confirm` path that writes alias + rule + firewall apply when the live schema confirms the required endpoints
 - Draft idempotence and rollback scaffolding with `rollback-draft`, stored rollback metadata, and delete/apply support paths
+- Mocked integration coverage for the end-to-end apply/rollback administrative flow
 - English-first repository document layout: `README.md`, `TODO.md`, and `CHANGELOG.md` are now the canonical English docs, with Spanish variants in `README.es.md`, `TODO.es.md`, and `CHANGELOG.es.md`
 - `TELEGRAM.md` documenting the recommended workflow for using PfChat through OpenClaw on Telegram
 - Documentation for the daily email summary use case through OpenClaw + Resend

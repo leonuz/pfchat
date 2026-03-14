@@ -4,7 +4,9 @@ Project backlog, organized by priority.
 
 ## High priority
 
-- [ ] Add safe administrative firewall actions for blocking an IP/device using `draft -> preview -> apply -> audit` workflow
+- [x] Add safe administrative firewall actions for blocking an IP/device using `draft -> preview -> apply -> audit` workflow
+- [ ] Strengthen rollback using pfSense-native object identifiers where available instead of descriptive delete heuristics
+- [ ] Add live-fire validation against a controlled lab target before recommending production use
 - [x] Load/configure `RESEND_API_KEY` in the environment to enable actual delivery of the daily email summary
 - [ ] Add optional custom CA support (`PFSENSE_CA_FILE`) so certificates can be validated without relying on `PFSENSE_VERIFY_SSL=false`  ← requested, but do not implement yet
 - [x] Add optional endpoint discovery from `/api/v2/schema/openapi` and cache supported capabilities

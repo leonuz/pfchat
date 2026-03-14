@@ -20,12 +20,17 @@ Safety model:
 - no blind writes when endpoint support cannot be confirmed from the live schema
 
 Proposed rollout:
-1. schema-aware discovery of write-capable firewall endpoints
-2. local draft model for proposed block actions
-3. preview output showing resolved target, interface, direction, rule/alias plan, and expected impact
-4. explicit apply flow
-5. audit logging and basic rollback support
-6. mocked integration tests for administrative flows
+1. schema-aware discovery of write-capable firewall endpoints  ✅
+2. local draft model for proposed block actions  ✅
+3. preview output showing resolved target, interface, direction, rule/alias plan, and expected impact  ✅
+4. explicit apply flow  ✅
+5. audit logging and basic rollback support  ✅
+6. mocked integration tests for administrative flows  ✅
+
+Current status:
+- implemented for IP/device block flows
+- uses saved drafts, explicit confirmation, audit logging, idempotent apply handling, and rollback scaffolding
+- still needs stronger rollback based on pfSense-native object identifiers and controlled live-fire validation before production confidence
 
 Initial scope:
 - `block-ip --draft <ip>`

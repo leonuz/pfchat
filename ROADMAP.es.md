@@ -20,12 +20,17 @@ Modelo de seguridad:
 - no hacer writes ciegos cuando el schema vivo no confirme soporte de endpoints
 
 Despliegue propuesto:
-1. discovery schema-aware de endpoints de escritura del firewall
-2. modelo local de draft para acciones de bloqueo propuestas
-3. preview con target resuelto, interfaz, dirección, plan de regla/alias e impacto esperado
-4. flujo explícito de apply
-5. auditoría y rollback básico
-6. integration tests mockeados para flujos administrativos
+1. discovery schema-aware de endpoints de escritura del firewall  ✅
+2. modelo local de draft para acciones de bloqueo propuestas  ✅
+3. preview con target resuelto, interfaz, dirección, plan de regla/alias e impacto esperado  ✅
+4. flujo explícito de apply  ✅
+5. auditoría y rollback básico  ✅
+6. integration tests mockeados para flujos administrativos  ✅
+
+Estado actual:
+- implementado para flujos de bloqueo de IP/dispositivo
+- usa drafts guardados, confirmación explícita, auditoría, idempotencia en apply y base de rollback
+- todavía necesita rollback más fuerte basado en identificadores nativos de objetos pfSense y validación real controlada antes de dar confianza de producción
 
 Scope inicial:
 - `block-ip --draft <ip>`
