@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Daily summary email now ranks internal clients by aggregated LAN traffic instead of nonexistent device fields
+- Daily summary email now excludes loopback and WAN-duplicate state entries from top-flow reporting
+- Daily summary email blocked-log highlights now prefer meaningful block events over noisy multicast/mDNS/IGMP chatter
+
 ## [0.2.0] - 2026-03-14
 
 ### Added

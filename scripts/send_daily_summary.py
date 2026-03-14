@@ -8,6 +8,7 @@ import os
 import re
 import socket
 import subprocess
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,15 @@ RESEND_PY = ROOT / 'skills' / 'resend-email' / '.venv' / 'bin' / 'python'
 RESEND_SCRIPT = ROOT / 'skills' / 'resend-email' / 'scripts' / 'send_resend_email.py'
 TOOLS_MD = ROOT / 'TOOLS.md'
 IP_LINE_RE = re.compile(r"- `(?P<ip>[^`]+)` — `(?P<name>[^`]+)`")
+PRIVATE_PREFIXES = ('10.', '172.', '192.168.')
+NOISE_PATTERNS = (
+    'ff02::',
+    '224.0.0.',
+    '239.255.255.',
+    'mdns',
+    'igmp',
+    'fe80::',
+)
 
 
 def load_inventory() -> dict[str, str]:
@@ -76,6 +86,29 @@ def pretty_endpoint(value: str, inventory: dict[str, str]) -> str:
     return f"{label}:{port}" if port else label
 
 
+def is_internal_ip(ip: str) -> bool:
+    return ip.startswith(PRIVATE_PREFIXES)
+
+
+def is_loopback_ip(ip: str) -> bool:
+    return ip.startswith('127.') or ip == '::1'
+
+
+def is_multicast_or_broadcast_ip(ip: str) -> bool:
+    return (
+        ip.startswith('224.')
+        or ip.startswith('239.')
+        or ip == '255.255.255.255'
+        or ip.endswith('.255')
+        or ip.startswith('ff02::')
+    )
+
+
+def is_noise_log(text: str) -> bool:
+    lowered = text.lower()
+    return any(pattern in lowered for pattern in NOISE_PATTERNS)
+
+
 def run_pfchat_snapshot(limit: int = 150) -> dict[str, Any]:
     proc = subprocess.run(
         ['python3', str(PFCHAT_QUERY), 'snapshot', '--limit', str(limit)],
@@ -87,25 +120,107 @@ def run_pfchat_snapshot(limit: int = 150) -> dict[str, Any]:
     return json.loads(proc.stdout)
 
 
+def aggregate_client_usage(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
+    connections = snapshot.get('connections', {}).get('connections', [])
+    per_client: dict[str, dict[str, Any]] = defaultdict(lambda: {
+        'ip': '',
+        'bytes_total': 0,
+        'bytes_in': 0,
+        'bytes_out': 0,
+        'flows': 0,
+    })
+
+    for conn in connections:
+        if conn.get('interface') != 'vtnet0':
+            continue
+        source_ip, _ = split_ip_port(conn.get('source'))
+        dest_ip, _ = split_ip_port(conn.get('destination'))
+        if not source_ip or not is_internal_ip(source_ip) or is_loopback_ip(source_ip):
+            continue
+        if dest_ip and (
+            is_loopback_ip(dest_ip)
+            or is_multicast_or_broadcast_ip(dest_ip)
+            or dest_ip == '192.168.0.254'
+        ):
+            continue
+
+        item = per_client[source_ip]
+        item['ip'] = source_ip
+        item['bytes_total'] += int(conn.get('bytes_total', 0) or 0)
+        item['bytes_in'] += int(conn.get('bytes_in', 0) or 0)
+        item['bytes_out'] += int(conn.get('bytes_out', 0) or 0)
+        item['flows'] += 1
+
+    return sorted(per_client.values(), key=lambda d: d['bytes_total'], reverse=True)
+
+
 def top_devices(snapshot: dict[str, Any], limit: int = 8) -> list[dict[str, Any]]:
     devices = snapshot.get('devices', {}).get('devices', [])
-    return sorted(devices, key=lambda d: int(d.get('seen_in_states', 0) or 0), reverse=True)[:limit]
+    usage = {item['ip']: item for item in aggregate_client_usage(snapshot)}
+    enriched: list[dict[str, Any]] = []
+
+    for dev in devices:
+        ip = str(dev.get('ip_address') or dev.get('ip') or '').strip()
+        if not ip:
+            continue
+        stats = usage.get(ip, {})
+        enriched.append({
+            'ip': ip,
+            'hostname': dev.get('hostname') or dev.get('dnsresolve') or dev.get('mac_address') or '?',
+            'source': dev.get('source') or 'unknown',
+            'bytes_total': int(stats.get('bytes_total', 0) or 0),
+            'bytes_in': int(stats.get('bytes_in', 0) or 0),
+            'bytes_out': int(stats.get('bytes_out', 0) or 0),
+            'flows': int(stats.get('flows', 0) or 0),
+        })
+
+    active = [item for item in enriched if item['bytes_total'] > 0]
+    return sorted(active, key=lambda d: d['bytes_total'], reverse=True)[:limit]
 
 
 def top_connections(snapshot: dict[str, Any], limit: int = 8) -> list[dict[str, Any]]:
     connections = snapshot.get('connections', {}).get('connections', [])
-    return sorted(connections, key=lambda c: int(c.get('bytes_total', 0) or 0), reverse=True)[:limit]
+    filtered: list[dict[str, Any]] = []
+    for conn in connections:
+        if conn.get('interface') != 'vtnet0':
+            continue
+        source_ip, _ = split_ip_port(conn.get('source'))
+        dest_ip, _ = split_ip_port(conn.get('destination'))
+        if not source_ip or not is_internal_ip(source_ip) or is_loopback_ip(source_ip):
+            continue
+        if dest_ip and (
+            is_loopback_ip(dest_ip)
+            or is_multicast_or_broadcast_ip(dest_ip)
+            or dest_ip == '192.168.0.254'
+        ):
+            continue
+        filtered.append(conn)
+    return sorted(filtered, key=lambda c: int(c.get('bytes_total', 0) or 0), reverse=True)[:limit]
 
 
 def blocked_log_lines(snapshot: dict[str, Any], limit: int = 8) -> list[str]:
     lines: list[str] = []
+    noisy: list[str] = []
     for item in snapshot.get('logs', {}).get('logs', []):
         text = str(item.get('text', ''))
-        if 'block' in text.lower():
-            lines.append(text)
+        if 'block' not in text.lower():
+            continue
+        if is_noise_log(text):
+            noisy.append(text)
+            continue
+        lines.append(text)
         if len(lines) >= limit:
             break
-    return lines
+    return lines if lines else noisy[:limit]
+
+
+def format_bytes(num: int) -> str:
+    value = float(num)
+    for unit in ('B', 'KB', 'MB', 'GB', 'TB'):
+        if value < 1024 or unit == 'TB':
+            return f'{value:.1f} {unit}'
+        value /= 1024
+    return f'{num} B'
 
 
 def build_text(snapshot: dict[str, Any]) -> str:
@@ -126,22 +241,30 @@ def build_text(snapshot: dict[str, Any]) -> str:
             lines.append(f'- {key}: {value}')
         lines.append('')
 
-    lines.append('Top active internal devices:')
-    for dev in top_devices(snapshot):
-        ip = dev.get('ip') or dev.get('ipaddr') or '(no-ip)'
-        seen = dev.get('seen_in_states', 'n/a')
-        lines.append(f'- {label_for_ip(ip, inventory)} — seen in {seen} active states')
+    lines.append('Top internal clients by active traffic:')
+    top_clients = top_devices(snapshot)
+    if top_clients:
+        for dev in top_clients:
+            lines.append(
+                f"- {label_for_ip(dev['ip'], inventory)} — total={format_bytes(dev['bytes_total'])} down={format_bytes(dev['bytes_in'])} up={format_bytes(dev['bytes_out'])} flows={dev['flows']}"
+            )
+    else:
+        lines.append('- No active LAN client traffic found in the sampled state table')
     lines.append('')
 
     if devices_meta.get('degraded'):
         lines.append('Device inventory note: running in degraded mode inferred from firewall states because ARP/DHCP endpoints are not exposed by this pfSense REST API installation.')
         lines.append('')
 
-    lines.append('Top active flows by bytes:')
-    for conn in top_connections(snapshot):
-        lines.append(
-            f"- {pretty_endpoint(conn.get('source'), inventory)} -> {pretty_endpoint(conn.get('destination'), inventory)} | {conn.get('protocol')} | {conn.get('state')} | bytes={conn.get('bytes_total')}"
-        )
+    lines.append('Top LAN flows by bytes:')
+    top_flows = top_connections(snapshot)
+    if top_flows:
+        for conn in top_flows:
+            lines.append(
+                f"- {pretty_endpoint(conn.get('source'), inventory)} -> {pretty_endpoint(conn.get('destination'), inventory)} | {conn.get('protocol')} | {conn.get('state')} | total={format_bytes(int(conn.get('bytes_total', 0) or 0))}"
+            )
+    else:
+        lines.append('- No qualifying LAN flows found in the sampled state table')
     lines.append('')
 
     lines.append('Recent blocked log highlights:')
