@@ -94,6 +94,9 @@ class PfSenseClient:
     def _post(self, path: str, body: Any = None, params: dict[str, Any] | None = None) -> Any:
         return self._request("POST", path, params=params, body=body)
 
+    def _delete(self, path: str, params: dict[str, Any] | None = None) -> Any:
+        return self._request("DELETE", path, params=params)
+
     @staticmethod
     def _unwrap(data: Any) -> Any:
         return data.get("data", data) if isinstance(data, dict) else data
@@ -228,14 +231,14 @@ class PfSenseClient:
 
     def create_firewall_alias(self, payload: dict[str, Any]) -> Any:
         return self._post_first_supported([
-            "firewall/aliases",
             "firewall/alias",
+            "firewall/aliases",
         ], payload)
 
     def create_firewall_rule(self, payload: dict[str, Any]) -> Any:
         return self._post_first_supported([
-            "firewall/rules",
             "firewall/rule",
+            "firewall/rules",
         ], payload)
 
     def apply_firewall_changes(self, payload: dict[str, Any] | None = None) -> Any:
@@ -243,21 +246,22 @@ class PfSenseClient:
             "firewall/apply",
         ], payload or {})
 
-    def delete_firewall_alias(self, payload: dict[str, Any]) -> Any:
-        return self._post_first_supported([
-            "firewall/alias/delete",
-            "firewall/aliases/delete",
+    def delete_firewall_alias(self, alias_id: int | str, apply: bool = False) -> Any:
+        path = self._filter_candidates_by_schema([
             "firewall/alias",
             "firewall/aliases",
-        ], payload)
+        ])[0]
+        params: dict[str, Any] = {'id': alias_id}
+        if apply:
+            params['apply'] = 'true'
+        return self._unwrap(self._delete(path, params=params))
 
-    def delete_firewall_rule(self, payload: dict[str, Any]) -> Any:
-        return self._post_first_supported([
-            "firewall/rule/delete",
-            "firewall/rules/delete",
+    def delete_firewall_rule(self, rule_id: int | str) -> Any:
+        path = self._filter_candidates_by_schema([
             "firewall/rule",
             "firewall/rules",
-        ], payload)
+        ])[0]
+        return self._unwrap(self._delete(path, params={'id': rule_id}))
 
     @staticmethod
     def _extract_ip(value: str) -> str:

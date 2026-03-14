@@ -44,11 +44,11 @@ class PfChatAdminIntegrationMockTests(unittest.TestCase):
 
             def create_firewall_alias(self, payload):
                 self.calls.append(('alias-create', payload))
-                return {'status': 'ok', 'name': payload['name']}
+                return {'status': 'ok', 'id': 3, 'name': payload['name']}
 
             def create_firewall_rule(self, payload):
                 self.calls.append(('rule-create', payload))
-                return {'status': 'ok', 'descr': payload['descr']}
+                return {'status': 'ok', 'id': 5, 'descr': payload['descr']}
 
             def apply_firewall_changes(self, payload):
                 self.calls.append(('apply', payload))
@@ -68,12 +68,12 @@ class PfChatAdminIntegrationMockTests(unittest.TestCase):
             'command': 'block-device',
             'target': {'input': 'iphoneLeo', 'ip': '192.168.0.95', 'hostname': 'iphoneLeo'},
             'proposal': {
-                'alias_name': 'pfchat_block_iphoneLeo_192_168_0_95',
+                'alias_name': 'pfb_iphoneleo_192_168_0_95',
                 'alias_type': 'host',
                 'alias_values': ['192.168.0.95'],
                 'rule_action': 'block',
                 'rule_direction': 'in',
-                'rule_interface': 'LAN',
+                'rule_interface': 'lan',
                 'rule_description': 'PfChat draft block for iphoneLeo (192.168.0.95)',
             },
             'schema_support': {'firewall_aliases_write': True, 'firewall_apply': True},
@@ -129,7 +129,7 @@ class PfChatAdminIntegrationMockTests(unittest.TestCase):
             'command': 'block-ip',
             'target': {'input': '1.2.3.4', 'ip': '1.2.3.4'},
             'proposal': {
-                'alias_name': 'pfchat_block_1_2_3_4',
+                'alias_name': 'pfb_1_2_3_4',
                 'alias_type': 'host',
                 'alias_values': ['1.2.3.4'],
                 'rule_action': 'block',

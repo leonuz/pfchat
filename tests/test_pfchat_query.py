@@ -113,7 +113,7 @@ class PfChatQueryTests(unittest.TestCase):
 
         draft = pfchat_query.build_block_draft(Client(), 'iphoneLeo', 'block-device')
         self.assertEqual(draft['target']['ip'], '192.168.0.95')
-        self.assertEqual(draft['proposal']['rule_interface'], 'LAN')
+        self.assertEqual(draft['proposal']['rule_interface'], 'lan')
         self.assertEqual(draft['apply_status'], 'draft-only')
 
     def test_build_block_draft_for_ip_requires_valid_ip(self) -> None:
@@ -198,12 +198,12 @@ class PfChatQueryTests(unittest.TestCase):
             'command': 'block-device',
             'target': {'input': 'iphoneLeo', 'ip': '192.168.0.95', 'hostname': 'iphoneLeo'},
             'proposal': {
-                'alias_name': 'pfchat_block_iphoneLeo_192_168_0_95',
+                'alias_name': 'pfb_iphoneleo_192_168_0_95',
                 'alias_type': 'host',
                 'alias_values': ['192.168.0.95'],
                 'rule_action': 'block',
                 'rule_direction': 'in',
-                'rule_interface': 'LAN',
+                'rule_interface': 'lan',
                 'rule_description': 'PfChat draft block for iphoneLeo (192.168.0.95)',
             },
             'schema_support': {'firewall_aliases_write': True, 'firewall_apply': True},
@@ -211,8 +211,10 @@ class PfChatQueryTests(unittest.TestCase):
         })
         result = pfchat_query.execute_apply_draft(client, saved, confirm=True)
         self.assertEqual(result['status'], 'applied')
-        self.assertEqual(client.alias_payload['name'], 'pfchat_block_iphoneLeo_192_168_0_95')
-        self.assertEqual(client.rule_payload['interface'], 'LAN')
+        self.assertEqual(client.alias_payload['name'], 'pfb_iphoneleo_192_168_0_95')
+        self.assertEqual(client.rule_payload['interface'], ['lan'])
+        self.assertEqual(client.rule_payload['source'], 'pfb_iphoneleo_192_168_0_95')
+        self.assertEqual(client.rule_payload['destination'], 'any')
         self.assertEqual(client.apply_payload, {'async': False})
 
     def test_execute_apply_draft_is_idempotent_after_success(self) -> None:
@@ -256,14 +258,16 @@ class PfChatQueryTests(unittest.TestCase):
             'target': {'input': 'iphoneLeo', 'ip': '192.168.0.95'},
             'apply_status': 'applied',
             'rollback': {
-                'alias_delete_payload': {'name': 'pfchat_block_iphoneLeo_192_168_0_95'},
-                'rule_delete_payload': {'descr': 'PfChat draft block for iphoneLeo (192.168.0.95)', 'interface': 'LAN'},
+                'alias_id': 3,
+                'rule_id': 5,
+                'alias_name': 'pfb_iphoneleo_192_168_0_95',
+                'rule_description': 'PfChat draft block for iphoneLeo (192.168.0.95)',
             },
         })
         result = pfchat_query.execute_rollback_draft(client, saved, confirm=True)
         self.assertEqual(result['status'], 'rolled-back')
-        self.assertEqual(client.alias_delete_payload['name'], 'pfchat_block_iphoneLeo_192_168_0_95')
-        self.assertEqual(client.rule_delete_payload['interface'], 'LAN')
+        self.assertEqual(client.alias_delete_payload, 3)
+        self.assertEqual(client.rule_delete_payload, 5)
 
 
 if __name__ == '__main__':

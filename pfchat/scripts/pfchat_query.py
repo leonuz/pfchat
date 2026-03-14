@@ -221,7 +221,14 @@ def is_ip_address(value: str) -> bool:
 
 def sanitize_alias_component(value: str) -> str:
     cleaned = re.sub(r'[^a-zA-Z0-9]+', '_', value).strip('_')
-    return cleaned[:40] or 'target'
+    return cleaned[:24] or 'target'
+
+
+def build_alias_name(hostname: str, ip_value: str) -> str:
+    host_part = sanitize_alias_component(hostname).lower()[:12] or 'host'
+    ip_part = sanitize_alias_component(ip_value).lower()[:12] or 'ip'
+    alias = f"pfb_{host_part}_{ip_part}"
+    return alias[:31]
 
 
 def make_draft_id(command: str, target: str) -> str:
@@ -352,10 +359,10 @@ def build_block_draft(client: PfSenseClient, target: str, command: str) -> dict[
         raise SystemExit(f'Unable to resolve a valid IP address from target: {target!r}') from exc
 
     device = resolved.get('device') if isinstance(resolved.get('device'), dict) else {}
-    interface = device.get('interface') or None
+    interface = str(device.get('interface') or '').strip().lower() or None
     hostname = device.get('hostname') or device.get('dnsresolve') or ip_value
     caps = client.get_capabilities().get('capabilities', {})
-    alias_name = f"pfchat_block_{sanitize_alias_component(hostname)}_{sanitize_alias_component(ip_value)}"
+    alias_name = build_alias_name(hostname, ip_value)
     private_target = parsed_ip.is_private
 
     warnings: list[str] = []
@@ -471,16 +478,16 @@ def execute_apply_draft(client: PfSenseClient, draft: dict[str, Any], confirm: b
         'type': proposal['alias_type'],
         'address': proposal['alias_values'],
         'descr': proposal['rule_description'],
-        'detail': f"Created by PfChat draft {draft.get('draft_id')}",
+        'detail': [f"Created by PfChat draft {draft.get('draft_id')}"] * len(proposal['alias_values']),
     }
     rule_payload = {
-        'interface': proposal['rule_interface'],
+        'interface': [proposal['rule_interface']],
         'type': proposal['rule_action'],
         'ipprotocol': 'inet',
-        'source': {'address': proposal['alias_name']},
-        'destination': {'any': True},
-        'direction': proposal['rule_direction'],
+        'source': proposal['alias_name'],
+        'destination': 'any',
         'descr': proposal['rule_description'],
+        'log': True,
     }
 
     alias_result = client.create_firewall_alias(alias_payload)
@@ -505,8 +512,10 @@ def execute_apply_draft(client: PfSenseClient, draft: dict[str, Any], confirm: b
     draft['last_apply_result'] = applied['results']
     draft['rollback'] = {
         'status': 'available',
-        'alias_delete_payload': {'name': proposal['alias_name']},
-        'rule_delete_payload': {'descr': proposal['rule_description'], 'interface': proposal['rule_interface']},
+        'alias_id': alias_result.get('id'),
+        'rule_id': rule_result.get('id'),
+        'alias_name': proposal['alias_name'],
+        'rule_description': proposal['rule_description'],
     }
     draft_path(str(draft['draft_id'])).write_text(json.dumps(draft, indent=2, ensure_ascii=False), encoding='utf-8')
     append_audit({
@@ -545,10 +554,10 @@ def execute_rollback_draft(client: PfSenseClient, draft: dict[str, Any], confirm
         raise SystemExit('Current live schema does not confirm firewall apply support for rollback.')
 
     results: dict[str, Any] = {}
-    if rollback.get('rule_delete_payload') and capabilities.get('firewall_rule_delete'):
-        results['rule_delete'] = client.delete_firewall_rule(rollback['rule_delete_payload'])
-    if rollback.get('alias_delete_payload') and capabilities.get('firewall_aliases_delete'):
-        results['alias_delete'] = client.delete_firewall_alias(rollback['alias_delete_payload'])
+    if rollback.get('rule_id') is not None and capabilities.get('firewall_rule_delete'):
+        results['rule_delete'] = client.delete_firewall_rule(rollback['rule_id'])
+    if rollback.get('alias_id') is not None and capabilities.get('firewall_aliases_delete'):
+        results['alias_delete'] = client.delete_firewall_alias(rollback['alias_id'])
     results['apply'] = client.apply_firewall_changes({'async': False})
 
     draft['apply_status'] = 'rolled-back'
