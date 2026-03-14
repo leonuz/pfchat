@@ -25,6 +25,7 @@ Pendientes del proyecto, organizados por prioridad.
 - [x] Mejorar el snapshot para resumir hallazgos de forma más compacta
 - [x] Añadir ejemplos reales de investigación en `references/`
 - [ ] Evaluar soporte para múltiples LAN/VLAN en inventario de dispositivos
+- [ ] Extender el bloqueo de salida por host más allá del flujo actual single-port draft/apply/rollback (múltiples puertos, protocolos más ricos y unblock por target+puerto)
 - [x] Añadir validación más estricta del archivo `.env`
 
 ## Prioridad baja
