@@ -176,7 +176,7 @@ class PfChatQueryTests(unittest.TestCase):
     def test_execute_apply_draft_runs_writes_when_confirmed(self) -> None:
         class Client:
             def get_capabilities(self):
-                return {'capabilities': {'firewall_aliases_write': True, 'firewall_rule_write': True, 'firewall_apply': True}}
+                return {'capabilities': {'firewall_aliases_write': True, 'firewall_rule_write': True, 'firewall_apply': True, 'firewall_aliases_delete': True, 'firewall_rule_delete': True}}
             def create_firewall_alias(self, payload):
                 self.alias_payload = payload
                 return {'status': 'alias-ok'}
@@ -186,6 +186,12 @@ class PfChatQueryTests(unittest.TestCase):
             def apply_firewall_changes(self, payload):
                 self.apply_payload = payload
                 return {'status': 'apply-ok'}
+            def delete_firewall_rule(self, payload):
+                self.rule_delete_payload = payload
+                return {'status': 'rule-delete-ok'}
+            def delete_firewall_alias(self, payload):
+                self.alias_delete_payload = payload
+                return {'status': 'alias-delete-ok'}
         client = Client()
         saved = pfchat_query.save_draft({
             'draft_id': 'apply123',
@@ -208,6 +214,56 @@ class PfChatQueryTests(unittest.TestCase):
         self.assertEqual(client.alias_payload['name'], 'pfchat_block_iphoneLeo_192_168_0_95')
         self.assertEqual(client.rule_payload['interface'], 'LAN')
         self.assertEqual(client.apply_payload, {'async': False})
+
+    def test_execute_apply_draft_is_idempotent_after_success(self) -> None:
+        class Client:
+            def get_capabilities(self):
+                return {'capabilities': {'firewall_aliases_write': True, 'firewall_rule_write': True, 'firewall_apply': True}}
+            def create_firewall_alias(self, payload):
+                raise AssertionError('should not be called')
+            def create_firewall_rule(self, payload):
+                raise AssertionError('should not be called')
+            def apply_firewall_changes(self, payload):
+                raise AssertionError('should not be called')
+        saved = pfchat_query.save_draft({
+            'draft_id': 'done123',
+            'command': 'block-ip',
+            'target': {'input': '1.2.3.4', 'ip': '1.2.3.4'},
+            'proposal': {'rule_interface': 'wan'},
+            'schema_support': {'firewall_aliases_write': True, 'firewall_apply': True},
+            'apply_status': 'applied',
+        })
+        result = pfchat_query.execute_apply_draft(Client(), saved, confirm=True)
+        self.assertEqual(result['status'], 'already-applied')
+
+    def test_execute_rollback_draft_runs_when_confirmed(self) -> None:
+        class Client:
+            def get_capabilities(self):
+                return {'capabilities': {'firewall_apply': True, 'firewall_aliases_delete': True, 'firewall_rule_delete': True}}
+            def delete_firewall_rule(self, payload):
+                self.rule_delete_payload = payload
+                return {'status': 'rule-delete-ok'}
+            def delete_firewall_alias(self, payload):
+                self.alias_delete_payload = payload
+                return {'status': 'alias-delete-ok'}
+            def apply_firewall_changes(self, payload):
+                self.apply_payload = payload
+                return {'status': 'apply-ok'}
+        client = Client()
+        saved = pfchat_query.save_draft({
+            'draft_id': 'rb123',
+            'command': 'block-device',
+            'target': {'input': 'iphoneLeo', 'ip': '192.168.0.95'},
+            'apply_status': 'applied',
+            'rollback': {
+                'alias_delete_payload': {'name': 'pfchat_block_iphoneLeo_192_168_0_95'},
+                'rule_delete_payload': {'descr': 'PfChat draft block for iphoneLeo (192.168.0.95)', 'interface': 'LAN'},
+            },
+        })
+        result = pfchat_query.execute_rollback_draft(client, saved, confirm=True)
+        self.assertEqual(result['status'], 'rolled-back')
+        self.assertEqual(client.alias_delete_payload['name'], 'pfchat_block_iphoneLeo_192_168_0_95')
+        self.assertEqual(client.rule_delete_payload['interface'], 'LAN')
 
 
 if __name__ == '__main__':

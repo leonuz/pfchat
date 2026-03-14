@@ -110,11 +110,13 @@ class PfSenseClientTests(unittest.TestCase):
         mock_get.assert_called_once_with('routing/gateway', None)
 
     def test_get_capabilities_detects_write_related_paths(self) -> None:
-        self.client._supported_paths = {'firewall/aliases', 'firewall/apply', 'firewall/rule'}
+        self.client._supported_paths = {'firewall/aliases', 'firewall/apply', 'firewall/rule', 'firewall/alias/delete', 'firewall/rule/delete'}
         caps = self.client.get_capabilities()
         self.assertTrue(caps['capabilities']['firewall_aliases_write'])
+        self.assertTrue(caps['capabilities']['firewall_aliases_delete'])
         self.assertTrue(caps['capabilities']['firewall_apply'])
         self.assertTrue(caps['capabilities']['firewall_rule_write'])
+        self.assertTrue(caps['capabilities']['firewall_rule_delete'])
 
     def test_create_firewall_alias_uses_supported_write_path(self) -> None:
         self.client._supported_paths = {'firewall/alias'}
@@ -136,6 +138,20 @@ class PfSenseClientTests(unittest.TestCase):
             result = self.client.apply_firewall_changes({'async': False})
         self.assertEqual(result, {'applied': True})
         mock_post.assert_called_once_with('firewall/apply', body={'async': False})
+
+    def test_delete_firewall_alias_uses_supported_delete_path(self) -> None:
+        self.client._supported_paths = {'firewall/alias/delete'}
+        with patch.object(self.client, '_post', return_value={'deleted': True}) as mock_post:
+            result = self.client.delete_firewall_alias({'name': 'test_alias'})
+        self.assertEqual(result, {'deleted': True})
+        mock_post.assert_called_once_with('firewall/alias/delete', body={'name': 'test_alias'})
+
+    def test_delete_firewall_rule_uses_supported_delete_path(self) -> None:
+        self.client._supported_paths = {'firewall/rule/delete'}
+        with patch.object(self.client, '_post', return_value={'deleted': True}) as mock_post:
+            result = self.client.delete_firewall_rule({'descr': 'rule'})
+        self.assertEqual(result, {'deleted': True})
+        mock_post.assert_called_once_with('firewall/rule/delete', body={'descr': 'rule'})
 
     @patch.object(PfSenseClient, 'get_firewall_states')
     def test_infer_connected_devices_from_states(self, mock_states: MagicMock) -> None:

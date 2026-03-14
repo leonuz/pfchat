@@ -445,6 +445,14 @@ def require_apply_readiness(draft: dict[str, Any]) -> None:
 
 def execute_apply_draft(client: PfSenseClient, draft: dict[str, Any], confirm: bool = False) -> dict[str, Any]:
     require_apply_readiness(draft)
+    if draft.get('apply_status') == 'applied':
+        return {
+            'mode': 'apply',
+            'draft_id': draft.get('draft_id'),
+            'status': 'already-applied',
+            'draft': draft,
+            'next_steps': ['Use rollback-draft if you intend to undo this applied draft.'],
+        }
     if not confirm:
         return build_apply_preview(draft)
 
@@ -495,6 +503,11 @@ def execute_apply_draft(client: PfSenseClient, draft: dict[str, Any], confirm: b
     draft['apply_status'] = 'applied'
     draft['applied_at'] = applied['applied_at']
     draft['last_apply_result'] = applied['results']
+    draft['rollback'] = {
+        'status': 'available',
+        'alias_delete_payload': {'name': proposal['alias_name']},
+        'rule_delete_payload': {'descr': proposal['rule_description'], 'interface': proposal['rule_interface']},
+    }
     draft_path(str(draft['draft_id'])).write_text(json.dumps(draft, indent=2, ensure_ascii=False), encoding='utf-8')
     append_audit({
         'ts': applied['applied_at'],
@@ -504,6 +517,56 @@ def execute_apply_draft(client: PfSenseClient, draft: dict[str, Any], confirm: b
         'target': target,
     })
     return applied
+
+
+def execute_rollback_draft(client: PfSenseClient, draft: dict[str, Any], confirm: bool = False) -> dict[str, Any]:
+    if draft.get('apply_status') != 'applied':
+        raise SystemExit('Rollback requires a previously applied draft.')
+    rollback = draft.get('rollback', {}) if isinstance(draft, dict) else {}
+    if not rollback:
+        raise SystemExit('Draft does not contain rollback metadata.')
+    if not confirm:
+        append_audit({
+            'ts': int(time.time()),
+            'event': 'rollback_preview',
+            'draft_id': draft.get('draft_id'),
+            'command': draft.get('command'),
+        })
+        return {
+            'mode': 'rollback-preview',
+            'draft_id': draft.get('draft_id'),
+            'status': 'ready-for-confirmation',
+            'rollback': rollback,
+            'next_steps': ['Re-run rollback-draft with --confirm to execute the rollback.'],
+        }
+
+    capabilities = client.get_capabilities().get('capabilities', {})
+    if not capabilities.get('firewall_apply'):
+        raise SystemExit('Current live schema does not confirm firewall apply support for rollback.')
+
+    results: dict[str, Any] = {}
+    if rollback.get('rule_delete_payload') and capabilities.get('firewall_rule_delete'):
+        results['rule_delete'] = client.delete_firewall_rule(rollback['rule_delete_payload'])
+    if rollback.get('alias_delete_payload') and capabilities.get('firewall_aliases_delete'):
+        results['alias_delete'] = client.delete_firewall_alias(rollback['alias_delete_payload'])
+    results['apply'] = client.apply_firewall_changes({'async': False})
+
+    draft['apply_status'] = 'rolled-back'
+    draft['rolled_back_at'] = int(time.time())
+    draft['last_rollback_result'] = results
+    draft_path(str(draft['draft_id'])).write_text(json.dumps(draft, indent=2, ensure_ascii=False), encoding='utf-8')
+    append_audit({
+        'ts': draft['rolled_back_at'],
+        'event': 'rollback_executed',
+        'draft_id': draft.get('draft_id'),
+        'command': draft.get('command'),
+    })
+    return {
+        'mode': 'rollback',
+        'draft_id': draft.get('draft_id'),
+        'status': 'rolled-back',
+        'results': results,
+    }
 
 
 def render_view(data: Any, view: str | None) -> Any:
@@ -540,7 +603,7 @@ def main() -> int:
         default='snapshot',
         choices=[
             "capabilities", "devices", "connections", "logs", "interfaces", "health", "rules", "snapshot",
-            "block-ip", "block-device", "draft-show", "draft-list", "apply-draft"
+            "block-ip", "block-device", "draft-show", "draft-list", "apply-draft", "rollback-draft"
         ],
         help="Dataset to fetch from pfSense",
     )
@@ -619,6 +682,10 @@ def main() -> int:
         if not args.draft_id:
             raise SystemExit('Missing --draft-id for apply-draft.')
         data = execute_apply_draft(client, load_draft(args.draft_id), confirm=args.confirm)
+    elif args.command == 'rollback-draft':
+        if not args.draft_id:
+            raise SystemExit('Missing --draft-id for rollback-draft.')
+        data = execute_rollback_draft(client, load_draft(args.draft_id), confirm=args.confirm)
     else:
         data = client.get_snapshot(limit=args.limit)
 

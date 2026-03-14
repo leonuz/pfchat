@@ -243,6 +243,22 @@ class PfSenseClient:
             "firewall/apply",
         ], payload or {})
 
+    def delete_firewall_alias(self, payload: dict[str, Any]) -> Any:
+        return self._post_first_supported([
+            "firewall/alias/delete",
+            "firewall/aliases/delete",
+            "firewall/alias",
+            "firewall/aliases",
+        ], payload)
+
+    def delete_firewall_rule(self, payload: dict[str, Any]) -> Any:
+        return self._post_first_supported([
+            "firewall/rule/delete",
+            "firewall/rules/delete",
+            "firewall/rule",
+            "firewall/rules",
+        ], payload)
+
     @staticmethod
     def _extract_ip(value: str) -> str:
         """Extract the IP portion from values like 192.168.0.91:443 or [IPv6]:443."""
@@ -420,7 +436,9 @@ class PfSenseClient:
                 "system_status": any(path in supported for path in ["status/system", "system/stats", "system/status"]),
                 "gateways": any(path in supported for path in ["status/gateways", "routing/gateways", "routing/gateway", "status/gateway", "system/gateways"]),
                 "firewall_aliases_write": any(path in supported for path in ["firewall/aliases", "firewall/alias"]),
+                "firewall_aliases_delete": any(path in supported for path in ["firewall/alias/delete", "firewall/aliases/delete", "firewall/alias", "firewall/aliases"]),
                 "firewall_rule_write": any(path in supported for path in ["firewall/rules", "firewall/rule"]),
+                "firewall_rule_delete": any(path in supported for path in ["firewall/rule/delete", "firewall/rules/delete", "firewall/rule", "firewall/rules"]),
                 "firewall_apply": "firewall/apply" in supported,
             },
         }

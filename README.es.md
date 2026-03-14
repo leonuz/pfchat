@@ -219,6 +219,8 @@ python3 pfchat/scripts/pfchat_query.py draft-list
 python3 pfchat/scripts/pfchat_query.py draft-show --draft-id <id>
 python3 pfchat/scripts/pfchat_query.py apply-draft --draft-id <id>
 python3 pfchat/scripts/pfchat_query.py apply-draft --draft-id <id> --confirm
+python3 pfchat/scripts/pfchat_query.py rollback-draft --draft-id <id>
+python3 pfchat/scripts/pfchat_query.py rollback-draft --draft-id <id> --confirm
 ```
 
 Comportamiento actual:
@@ -228,6 +230,8 @@ Comportamiento actual:
 - soporta `draft-show`, `draft-list` y `apply-draft`
 - `apply-draft` sin `--confirm` solo hace preview y audita la intención
 - `apply-draft --confirm` ejecuta alias + regla + firewall apply solo cuando el schema confirma soporte
+- reintentos sobre un draft ya aplicado se tratan como idempotentes y no reejecutan writes
+- `rollback-draft` da preview/confirm de rollback usando metadata de rollback guardada cuando existe
 - reporta soporte del schema para pasos de write/apply
 
 ## Presets de automatización
