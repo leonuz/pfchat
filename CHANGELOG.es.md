@@ -13,7 +13,8 @@ Todos los cambios relevantes de este proyecto se documentan aquí.
 
 ### Añadido
 
-- Workflows preview-only `block-ip` y `block-device` que resuelven targets, proponen metadata de alias/regla y reportan soporte del schema sin aplicar cambios al firewall
+- Workflows preview-only `block-ip` y `block-device` que resuelven targets, proponen metadata de alias/regla, guardan estado local del draft y reportan soporte del schema sin aplicar cambios al firewall
+- Persistencia local de drafts y auditoría con `draft-list`, `draft-show` y flujo `apply-draft` bloqueado para futuros writes seguros del firewall
 - Convención de documentos orientada a GitHub: `README.md`, `TODO.md` y `CHANGELOG.md` quedan como originales en inglés, y las variantes en español pasan a `README.es.md`, `TODO.es.md` y `CHANGELOG.es.md`
 - Documento `TELEGRAM.md` con el flujo recomendado para usar PfChat a través de OpenClaw en Telegram
 - Documentación del caso de uso de resumen diario por email mediante OpenClaw + Resend

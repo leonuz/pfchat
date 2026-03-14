@@ -8,16 +8,20 @@ Examples:
   python3 skills/pfchat/scripts/pfchat_query.py snapshot --limit 150 --once compact
   python3 skills/pfchat/scripts/pfchat_query.py block-ip --target 1.2.3.4
   python3 skills/pfchat/scripts/pfchat_query.py block-device --target iphoneLeo
+  python3 skills/pfchat/scripts/pfchat_query.py draft-show --draft-id <id>
+  python3 skills/pfchat/scripts/pfchat_query.py apply-draft --draft-id <id>
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import ipaddress
 import json
 import os
 import re
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -35,6 +39,15 @@ ONCE_PRESETS = {
     'wan': {'command': 'health', 'limit': 20, 'view': 'wan'},
     'blocked': {'command': 'logs', 'limit': 100, 'action': 'block', 'view': 'logs'},
 }
+
+
+STATE_DIR = Path(__file__).resolve().parents[1] / '.state'
+DRAFTS_DIR = STATE_DIR / 'drafts'
+AUDIT_LOG = STATE_DIR / 'audit.log'
+
+
+def ensure_state_dirs() -> None:
+    DRAFTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def load_env_file(path: Path) -> None:
@@ -211,6 +224,64 @@ def sanitize_alias_component(value: str) -> str:
     return cleaned[:40] or 'target'
 
 
+def make_draft_id(command: str, target: str) -> str:
+    seed = f'{command}|{target}|{time.time_ns()}'
+    return hashlib.sha256(seed.encode()).hexdigest()[:12]
+
+
+def draft_path(draft_id: str) -> Path:
+    return DRAFTS_DIR / f'{draft_id}.json'
+
+
+def append_audit(event: dict[str, Any]) -> None:
+    ensure_state_dirs()
+    with AUDIT_LOG.open('a', encoding='utf-8') as handle:
+        handle.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + '\n')
+
+
+def save_draft(draft: dict[str, Any]) -> dict[str, Any]:
+    ensure_state_dirs()
+    draft_id = draft.get('draft_id') or make_draft_id(str(draft.get('command', 'draft')), str(draft.get('target', {}).get('input', 'target')))
+    draft['draft_id'] = draft_id
+    draft['saved_at'] = int(time.time())
+    draft['state_path'] = str(draft_path(draft_id))
+    draft_path(draft_id).write_text(json.dumps(draft, indent=2, ensure_ascii=False), encoding='utf-8')
+    append_audit({
+        'ts': draft['saved_at'],
+        'event': 'draft_saved',
+        'draft_id': draft_id,
+        'command': draft.get('command'),
+        'target': draft.get('target', {}),
+    })
+    return draft
+
+
+def load_draft(draft_id: str) -> dict[str, Any]:
+    ensure_state_dirs()
+    path = draft_path(draft_id)
+    if not path.exists():
+        raise SystemExit(f'Unknown draft id: {draft_id}')
+    return json.loads(path.read_text(encoding='utf-8'))
+
+
+def list_drafts() -> dict[str, Any]:
+    ensure_state_dirs()
+    drafts = []
+    for path in sorted(DRAFTS_DIR.glob('*.json')):
+        try:
+            payload = json.loads(path.read_text(encoding='utf-8'))
+        except Exception:
+            continue
+        drafts.append({
+            'draft_id': payload.get('draft_id'),
+            'saved_at': payload.get('saved_at'),
+            'command': payload.get('command'),
+            'target': payload.get('target', {}),
+            'apply_status': payload.get('apply_status'),
+        })
+    return {'total_drafts': len(drafts), 'drafts': drafts}
+
+
 def resolve_block_target(client: PfSenseClient, target: str, command: str) -> dict[str, Any]:
     target = str(target or '').strip()
     if not target:
@@ -301,7 +372,7 @@ def build_block_draft(client: PfSenseClient, target: str, command: str) -> dict[
         'mode': 'draft',
         'command': command,
         'apply_supported_now': False,
-        'apply_status': 'not-implemented',
+        'apply_status': 'draft-only',
         'target': {
             'input': resolved['input'],
             'kind': resolved['kind'],
@@ -330,7 +401,30 @@ def build_block_draft(client: PfSenseClient, target: str, command: str) -> dict[
         },
         'next_steps': [
             'Review this draft and confirm the target, interface, and expected impact.',
-            'Apply is intentionally not implemented yet in this phase.',
+            'Use draft-show with the returned draft_id to reload this proposal later.',
+            'Apply remains blocked until the write phase is implemented.',
+        ],
+    }
+
+
+def build_apply_preview(draft: dict[str, Any]) -> dict[str, Any]:
+    event = {
+        'ts': int(time.time()),
+        'event': 'apply_blocked',
+        'draft_id': draft.get('draft_id'),
+        'command': draft.get('command'),
+        'target': draft.get('target', {}),
+    }
+    append_audit(event)
+    return {
+        'mode': 'apply-preview',
+        'draft_id': draft.get('draft_id'),
+        'status': 'blocked',
+        'reason': 'Apply is not implemented yet for firewall writes. Draft persistence and audit trail are ready; live mutation remains intentionally disabled.',
+        'draft': draft,
+        'next_steps': [
+            'Review the saved draft details.',
+            'Implement write endpoints, explicit confirmation, and rollback before enabling apply.',
         ],
     }
 
@@ -367,7 +461,10 @@ def main() -> int:
         "command",
         nargs='?',
         default='snapshot',
-        choices=["capabilities", "devices", "connections", "logs", "interfaces", "health", "rules", "snapshot", "block-ip", "block-device"],
+        choices=[
+            "capabilities", "devices", "connections", "logs", "interfaces", "health", "rules", "snapshot",
+            "block-ip", "block-device", "draft-show", "draft-list", "apply-draft"
+        ],
         help="Dataset to fetch from pfSense",
     )
     parser.add_argument("--once", choices=sorted(ONCE_PRESETS.keys()), help="Run an automation-oriented preset in one shot")
@@ -380,12 +477,17 @@ def main() -> int:
     parser.add_argument("--contains", help="Free-text contains helper for connections or logs")
     parser.add_argument("--action", choices=["block", "pass", "match"], help="Log action filter helper")
     parser.add_argument("--target", help="Target IP or device identifier for draft block workflows")
+    parser.add_argument("--draft-id", help="Saved draft identifier for draft-show or apply-draft")
     args = parser.parse_args()
     args = apply_once_preset(args)
 
-    host, api_key, verify_ssl = load_config()
-    client = PfSenseClient(host=host, api_key=api_key, verify_ssl=verify_ssl)
     base_filters = parse_filters(args.filter)
+    command_needs_client = args.command not in {'draft-show', 'draft-list', 'apply-draft'}
+    if command_needs_client:
+        host, api_key, verify_ssl = load_config()
+        client = PfSenseClient(host=host, api_key=api_key, verify_ssl=verify_ssl)
+    else:
+        client = None
 
     if args.command == "capabilities":
         data = client.get_capabilities()
@@ -421,15 +523,24 @@ def main() -> int:
             },
         }
     elif args.command == "interfaces":
-        interfaces = client.get_interfaces()
-        data = {"interfaces": interfaces}
+        data = {"interfaces": client.get_interfaces()}
     elif args.command == "health":
         data = client.get_health_bundle()
     elif args.command == "rules":
         rules = client.get_firewall_rules(filters=base_filters or None)
         data = {"total_rules": len(rules), "rules": rules, "applied_filters": base_filters}
     elif args.command in {"block-ip", "block-device"}:
-        data = build_block_draft(client, args.target or '', args.command)
+        data = save_draft(build_block_draft(client, args.target or '', args.command))
+    elif args.command == 'draft-show':
+        if not args.draft_id:
+            raise SystemExit('Missing --draft-id for draft-show.')
+        data = load_draft(args.draft_id)
+    elif args.command == 'draft-list':
+        data = list_drafts()
+    elif args.command == 'apply-draft':
+        if not args.draft_id:
+            raise SystemExit('Missing --draft-id for apply-draft.')
+        data = build_apply_preview(load_draft(args.draft_id))
     else:
         data = client.get_snapshot(limit=args.limit)
 

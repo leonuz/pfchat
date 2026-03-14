@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -14,6 +16,15 @@ import pfchat_query  # noqa: E402
 
 
 class PfChatQueryTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tempdir = tempfile.TemporaryDirectory()
+        pfchat_query.STATE_DIR = Path(self.tempdir.name)
+        pfchat_query.DRAFTS_DIR = pfchat_query.STATE_DIR / 'drafts'
+        pfchat_query.AUDIT_LOG = pfchat_query.STATE_DIR / 'audit.log'
+
+    def tearDown(self) -> None:
+        self.tempdir.cleanup()
+
     def test_parse_bool_env_accepts_common_values(self) -> None:
         import os
         os.environ['PFSENSE_VERIFY_SSL'] = 'yes'
@@ -103,7 +114,7 @@ class PfChatQueryTests(unittest.TestCase):
         draft = pfchat_query.build_block_draft(Client(), 'iphoneLeo', 'block-device')
         self.assertEqual(draft['target']['ip'], '192.168.0.95')
         self.assertEqual(draft['proposal']['rule_interface'], 'LAN')
-        self.assertEqual(draft['apply_status'], 'not-implemented')
+        self.assertEqual(draft['apply_status'], 'draft-only')
 
     def test_build_block_draft_for_ip_requires_valid_ip(self) -> None:
         class Client:
@@ -115,6 +126,32 @@ class PfChatQueryTests(unittest.TestCase):
 
         with self.assertRaises(SystemExit):
             pfchat_query.build_block_draft(Client(), 'not-an-ip', 'block-ip')
+
+    def test_save_and_load_draft_roundtrip(self) -> None:
+        draft = {
+            'command': 'block-ip',
+            'target': {'input': '1.2.3.4'},
+            'apply_status': 'draft-only',
+        }
+        saved = pfchat_query.save_draft(draft)
+        loaded = pfchat_query.load_draft(saved['draft_id'])
+        self.assertEqual(loaded['draft_id'], saved['draft_id'])
+        self.assertTrue(Path(saved['state_path']).exists())
+
+    def test_list_drafts_returns_saved_entries(self) -> None:
+        pfchat_query.save_draft({'command': 'block-ip', 'target': {'input': '1.2.3.4'}, 'apply_status': 'draft-only'})
+        listing = pfchat_query.list_drafts()
+        self.assertEqual(listing['total_drafts'], 1)
+        self.assertEqual(listing['drafts'][0]['command'], 'block-ip')
+
+    def test_apply_preview_blocks_and_audits(self) -> None:
+        saved = pfchat_query.save_draft({'command': 'block-ip', 'target': {'input': '1.2.3.4'}, 'apply_status': 'draft-only'})
+        result = pfchat_query.build_apply_preview(saved)
+        self.assertEqual(result['status'], 'blocked')
+        lines = pfchat_query.AUDIT_LOG.read_text(encoding='utf-8').strip().splitlines()
+        self.assertTrue(lines)
+        payload = json.loads(lines[-1])
+        self.assertEqual(payload['event'], 'apply_blocked')
 
 
 if __name__ == '__main__':

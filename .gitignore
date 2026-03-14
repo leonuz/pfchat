@@ -8,4 +8,5 @@ venv/
 .env.local
 .DS_Store
 pfchat/.cache/
+pfchat/.state/
 dist/

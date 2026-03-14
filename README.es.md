@@ -215,11 +215,16 @@ Ejemplos:
 python3 pfchat/scripts/pfchat_query.py block-ip --target 1.2.3.4
 python3 pfchat/scripts/pfchat_query.py block-device --target iphoneLeo
 python3 pfchat/scripts/pfchat_query.py block-device --target 192.168.0.95
+python3 pfchat/scripts/pfchat_query.py draft-list
+python3 pfchat/scripts/pfchat_query.py draft-show --draft-id <id>
+python3 pfchat/scripts/pfchat_query.py apply-draft --draft-id <id>
 ```
 
 Comportamiento actual:
 - resuelve el target
 - propone metadata de alias/regla
+- guarda la propuesta localmente con un `draft_id`
+- soporta `draft-show`, `draft-list` y una ruta `apply-draft` bloqueada con auditoría
 - reporta soporte del schema para futuros pasos de write/apply
 - **todavía no aplica** ningún cambio al firewall
 
