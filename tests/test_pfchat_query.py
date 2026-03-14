@@ -308,6 +308,40 @@ class PfChatQueryTests(unittest.TestCase):
         self.assertEqual(client.rule_id, 5)
         self.assertEqual(client.alias_id, 3)
 
+    def test_select_managed_objects_by_target(self) -> None:
+        class Client:
+            def get_firewall_aliases(self):
+                return [{'id': 3, 'name': 'pfb_sniperhack_192_168_0_81', 'descr': 'PfChat draft block for sniperhack (192.168.0.81)', 'address': ['192.168.0.81']}]
+            def get_firewall_rules(self):
+                return [{'id': 5, 'descr': 'PfChat draft block for sniperhack (192.168.0.81)', 'source': 'pfb_sniperhack_192_168_0_81', 'destination': 'any'}]
+        result = pfchat_query.select_managed_objects_by_target(Client(), 'sniperhack')
+        self.assertEqual(result['total_aliases'], 1)
+        self.assertEqual(result['total_rules'], 1)
+
+    def test_cleanup_managed_target_confirmed(self) -> None:
+        class Client:
+            def get_firewall_aliases(self):
+                return [{'id': 3, 'name': 'pfb_sniperhack_192_168_0_81', 'descr': 'PfChat draft block for sniperhack (192.168.0.81)', 'address': ['192.168.0.81']}]
+            def get_firewall_rules(self):
+                return [{'id': 5, 'descr': 'PfChat draft block for sniperhack (192.168.0.81)', 'source': 'pfb_sniperhack_192_168_0_81', 'destination': 'any'}]
+            def get_capabilities(self):
+                return {'capabilities': {'firewall_apply': True, 'firewall_aliases_delete': True, 'firewall_rule_delete': True}}
+            def delete_firewall_rule(self, rule_id):
+                self.rule_id = rule_id
+                return {'status': 'rule-delete-ok'}
+            def delete_firewall_alias(self, alias_id):
+                self.alias_id = alias_id
+                return {'status': 'alias-delete-ok'}
+            def apply_firewall_changes(self, payload):
+                self.apply_payload = payload
+                return {'status': 'apply-ok'}
+        client = Client()
+        result = pfchat_query.cleanup_managed_target(client, '192.168.0.81', confirm=True)
+        self.assertEqual(result['status'], 'cleaned')
+        self.assertEqual(result['target'], '192.168.0.81')
+        self.assertEqual(client.rule_id, 5)
+        self.assertEqual(client.alias_id, 3)
+
 
 if __name__ == '__main__':
     unittest.main()

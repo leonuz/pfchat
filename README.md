@@ -215,6 +215,8 @@ Examples:
 python3 pfchat/scripts/pfchat_query.py block-ip --target 1.2.3.4
 python3 pfchat/scripts/pfchat_query.py block-device --target iphoneLeo
 python3 pfchat/scripts/pfchat_query.py block-device --target 192.168.0.95
+python3 pfchat/scripts/pfchat_query.py unblock-ip --target 1.2.3.4
+python3 pfchat/scripts/pfchat_query.py unblock-device --target sniperhack
 python3 pfchat/scripts/pfchat_query.py draft-list
 python3 pfchat/scripts/pfchat_query.py draft-show --draft-id <id>
 python3 pfchat/scripts/pfchat_query.py apply-draft --draft-id <id>
@@ -230,7 +232,7 @@ Current behavior:
 - resolves the target
 - proposes alias/rule metadata
 - saves the proposal locally with a `draft_id`
-- supports `draft-show`, `draft-list`, `apply-draft`, `rollback-draft`, `pfchat-managed-list`, and `pfchat-managed-cleanup`
+- supports `draft-show`, `draft-list`, `apply-draft`, `rollback-draft`, `pfchat-managed-list`, `pfchat-managed-cleanup`, `unblock-ip`, and `unblock-device`
 - `apply-draft` without `--confirm` only previews and audits intent
 - `apply-draft --confirm` executes alias + rule + firewall apply only when schema support is confirmed
 - repeated apply attempts on an already applied draft are treated as idempotent and do not re-run writes

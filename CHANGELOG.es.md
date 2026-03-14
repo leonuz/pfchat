@@ -20,6 +20,7 @@ Todos los cambios relevantes de este proyecto se documentan aquí.
 - Cobertura de integración mockeada para el flujo administrativo completo de apply/rollback
 - Validación real en pfSense para block/apply/rollback contra un target de laboratorio controlado, más rollback por IDs de objetos pfSense
 - Operaciones de objetos gestionados con `pfchat-managed-list` y `pfchat-managed-cleanup` para aliases y reglas creados por PfChat
+- Flujos de desbloqueo por target con `unblock-ip` y `unblock-device` apoyados en discovery de objetos gestionados
 - Convención de documentos orientada a GitHub: `README.md`, `TODO.md` y `CHANGELOG.md` quedan como originales en inglés, y las variantes en español pasan a `README.es.md`, `TODO.es.md` y `CHANGELOG.es.md`
 - Documento `TELEGRAM.md` con el flujo recomendado para usar PfChat a través de OpenClaw en Telegram
 - Documentación del caso de uso de resumen diario por email mediante OpenClaw + Resend

@@ -553,20 +553,19 @@ def list_managed_objects(client: PfSenseClient) -> dict[str, Any]:
     }
 
 
-def cleanup_managed_objects(client: PfSenseClient, confirm: bool = False) -> dict[str, Any]:
-    managed = list_managed_objects(client)
+def execute_managed_delete(client: PfSenseClient, managed: dict[str, Any], confirm: bool, event_prefix: str, mode_preview: str, mode_apply: str, next_step_text: str) -> dict[str, Any]:
     if not confirm:
-        append_audit({'ts': int(time.time()), 'event': 'managed_cleanup_preview', 'counts': {'aliases': managed['total_aliases'], 'rules': managed['total_rules']}})
+        append_audit({'ts': int(time.time()), 'event': f'{event_prefix}_preview', 'counts': {'aliases': managed['total_aliases'], 'rules': managed['total_rules']}})
         return {
-            'mode': 'managed-cleanup-preview',
+            'mode': mode_preview,
             'status': 'ready-for-confirmation',
             'managed': managed,
-            'next_steps': ['Re-run pfchat-managed-cleanup with --confirm to delete these PfChat-managed objects.'],
+            'next_steps': [next_step_text],
         }
 
     capabilities = client.get_capabilities().get('capabilities', {})
     if not capabilities.get('firewall_apply'):
-        raise SystemExit('Current live schema does not confirm firewall apply support for managed cleanup.')
+        raise SystemExit('Current live schema does not confirm firewall apply support for this cleanup action.')
 
     results = {'rule_delete': [], 'alias_delete': []}
     if capabilities.get('firewall_rule_delete'):
@@ -578,12 +577,75 @@ def cleanup_managed_objects(client: PfSenseClient, confirm: bool = False) -> dic
             if alias.get('id') is not None:
                 results['alias_delete'].append(client.delete_firewall_alias(alias['id']))
     results['apply'] = client.apply_firewall_changes({'async': False})
-    append_audit({'ts': int(time.time()), 'event': 'managed_cleanup_executed', 'counts': {'aliases': len(results['alias_delete']), 'rules': len(results['rule_delete'])}})
+    append_audit({'ts': int(time.time()), 'event': f'{event_prefix}_executed', 'counts': {'aliases': len(results['alias_delete']), 'rules': len(results['rule_delete'])}})
     return {
-        'mode': 'managed-cleanup',
+        'mode': mode_apply,
         'status': 'cleaned',
         'results': results,
     }
+
+
+def cleanup_managed_objects(client: PfSenseClient, confirm: bool = False) -> dict[str, Any]:
+    managed = list_managed_objects(client)
+    return execute_managed_delete(
+        client,
+        managed,
+        confirm,
+        event_prefix='managed_cleanup',
+        mode_preview='managed-cleanup-preview',
+        mode_apply='managed-cleanup',
+        next_step_text='Re-run pfchat-managed-cleanup with --confirm to delete these PfChat-managed objects.',
+    )
+
+
+def select_managed_objects_by_target(client: PfSenseClient, target: str) -> dict[str, Any]:
+    target = normalize_device_name(target)
+    if not target:
+        raise SystemExit('Missing --target for unblock workflow.')
+    managed = list_managed_objects(client)
+    aliases = []
+    rules = []
+    for alias in managed['aliases']:
+        hay = ' '.join([
+            str(alias.get('name') or ''),
+            str(alias.get('descr') or ''),
+            ' '.join(str(x) for x in (alias.get('address') or [])),
+            ' '.join(str(x) for x in (alias.get('detail') or [])),
+        ]).lower()
+        if target in hay:
+            aliases.append(alias)
+    for rule in managed['rules']:
+        hay = ' '.join([
+            str(rule.get('descr') or ''),
+            str(rule.get('source') or ''),
+            str(rule.get('destination') or ''),
+        ]).lower()
+        if target in hay:
+            rules.append(rule)
+    return {
+        'target': target,
+        'total_aliases': len(aliases),
+        'total_rules': len(rules),
+        'aliases': aliases,
+        'rules': rules,
+    }
+
+
+def cleanup_managed_target(client: PfSenseClient, target: str, confirm: bool = False) -> dict[str, Any]:
+    managed = select_managed_objects_by_target(client, target)
+    if managed['total_aliases'] == 0 and managed['total_rules'] == 0:
+        raise SystemExit(f'No PfChat-managed objects matched target: {target!r}')
+    result = execute_managed_delete(
+        client,
+        managed,
+        confirm,
+        event_prefix='managed_target_cleanup',
+        mode_preview='managed-target-cleanup-preview',
+        mode_apply='managed-target-cleanup',
+        next_step_text='Re-run unblock command with --confirm to remove these PfChat-managed objects.',
+    )
+    result['target'] = managed['target']
+    return result
 
 
 def execute_rollback_draft(client: PfSenseClient, draft: dict[str, Any], confirm: bool = False) -> dict[str, Any]:
@@ -670,7 +732,7 @@ def main() -> int:
         default='snapshot',
         choices=[
             "capabilities", "devices", "connections", "logs", "interfaces", "health", "rules", "snapshot",
-            "block-ip", "block-device", "draft-show", "draft-list", "apply-draft", "rollback-draft", "pfchat-managed-list", "pfchat-managed-cleanup"
+            "block-ip", "block-device", "unblock-ip", "unblock-device", "draft-show", "draft-list", "apply-draft", "rollback-draft", "pfchat-managed-list", "pfchat-managed-cleanup"
         ],
         help="Dataset to fetch from pfSense",
     )
@@ -739,6 +801,10 @@ def main() -> int:
         data = {"total_rules": len(rules), "rules": rules, "applied_filters": base_filters}
     elif args.command in {"block-ip", "block-device"}:
         data = save_draft(build_block_draft(client, args.target or '', args.command))
+    elif args.command in {'unblock-ip', 'unblock-device'}:
+        if not args.target:
+            raise SystemExit('Missing --target for unblock workflow.')
+        data = cleanup_managed_target(client, args.target, confirm=args.confirm)
     elif args.command == 'draft-show':
         if not args.draft_id:
             raise SystemExit('Missing --draft-id for draft-show.')
