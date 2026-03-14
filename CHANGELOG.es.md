@@ -2,6 +2,13 @@
 
 Todos los cambios relevantes de este proyecto se documentan aquí.
 
+## [Unreleased]
+
+### Planeado
+
+- Acciones administrativas seguras de firewall para bloquear una IP/dispositivo mediante un flujo `draft -> preview -> apply -> audit`
+- Entradas de roadmap que documentan el despliegue por etapas de writes seguros sobre el firewall
+
 ## [0.1.1] - 2026-03-13
 
 ### Añadido

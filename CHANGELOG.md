@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Planned
+
+- Safe administrative firewall actions for blocking an IP/device through a `draft -> preview -> apply -> audit` workflow
+- Roadmap entries documenting the staged rollout for safe firewall write actions
+
 ## [0.1.1] - 2026-03-13
 
 ### Added

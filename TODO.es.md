@@ -4,6 +4,7 @@ Pendientes del proyecto, organizados por prioridad.
 
 ## Alta prioridad
 
+- [ ] Añadir acciones administrativas seguras de firewall para bloquear una IP/dispositivo usando flujo `draft -> preview -> apply -> audit`
 - [x] Cargar/configurar `RESEND_API_KEY` en el entorno para activar el envío real del resumen diario por correo
 - [ ] Añadir soporte opcional para CA custom (`PFSENSE_CA_FILE`) y así validar certificados sin usar `PFSENSE_VERIFY_SSL=false`  ← pendiente solicitado, no implementar todavía
 - [x] Añadir descubrimiento opcional de endpoints desde `/api/v2/schema/openapi` y cachear capacidades soportadas
