@@ -44,14 +44,14 @@ class PfSenseClientTests(unittest.TestCase):
 
     def test_get_capabilities_includes_cache_metadata(self) -> None:
         self.client._supported_paths = {
-            'diagnostics/arp_table',
-            'status/dhcp_server/leases',
+            'diagnostics/arp_table/entry',
+            'services/dhcp_server/leases',
             'firewall/state',
             'status/logs/firewall',
             'firewall/rule',
             'interfaces',
-            'status/system',
-            'routing/gateways',
+            'system/status',
+            'routing/gateway',
         }
         caps = self.client.get_capabilities()
         self.assertTrue(caps['openapi_available'])
@@ -99,6 +99,13 @@ class PfSenseClientTests(unittest.TestCase):
         self.assertEqual(summary['gateway_status']['online'], ['WAN_DHCP'])
         self.assertEqual(summary['log_summary']['blocked_entries_in_sample'], 1)
         self.assertTrue(summary['highlights'])
+
+    def test_get_first_supported_uses_variant_confirmed_by_schema(self) -> None:
+        self.client._supported_paths = {'routing/gateway'}
+        with patch.object(self.client, '_get', return_value=[{'name': 'WAN_DHCP'}]) as mock_get:
+            gateways = self.client.get_gateways()
+        self.assertEqual(gateways, [{'name': 'WAN_DHCP'}])
+        mock_get.assert_called_once_with('routing/gateway', None)
 
     @patch.object(PfSenseClient, 'get_firewall_states')
     def test_infer_connected_devices_from_states(self, mock_states: MagicMock) -> None:

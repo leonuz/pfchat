@@ -37,6 +37,7 @@ Relevant paths discovered for PfChat:
 - `/api/v2/diagnostics/arp_table`
 - `/api/v2/diagnostics/arp_table/entry`
 - `/api/v2/status/dhcp_server/leases`
+- `/api/v2/services/dhcp_server/leases` (variant worth tolerating if exposed elsewhere)
 
 ### Traffic / rules
 - `/api/v2/firewall/states`

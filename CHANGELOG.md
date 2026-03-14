@@ -26,6 +26,7 @@ All notable changes to this project will be documented in this file.
 - `--once` automation presets and reduced `--view` rendering for compact workflows
 - Better degraded device inference from firewall states, including interfaces, peer counts, and confidence hints
 - Broader endpoint compatibility for singular/plural variants such as `firewall/state`, `firewall/rule`, `interfaces`, and `interface`
+- Additional conservative endpoint fallbacks for ARP, DHCP leases, system status, and gateways based on upstream/schema patterns
 - Expanded endpoint-variant notes from the live schema, including singular/plural, status/config, and service/status route families
 - Explicit skill coverage for WAN address / firewall public IP questions, including Spanish phrasing
 - Config fallback to the project-local `pfchat/.env` based on script path for invocations from other channels/contexts

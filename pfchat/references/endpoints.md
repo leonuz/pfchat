@@ -7,12 +7,14 @@ Use these endpoint groups when querying pfSense through `scripts/pfchat_query.py
 - `devices`
   - preferred candidates:
     - `diagnostics/arp_table`
+    - `diagnostics/arp_table/entry`
     - `status/arp`
     - `status/arp-table`
     - `diag/arp`
     - `diagnostics/arp`
   - DHCP lease candidates:
     - `status/dhcp_server/leases`
+    - `services/dhcp_server/leases`
     - `services/dhcpd/leases`
     - `status/dhcp_leases`
     - `status/dhcp/leases`
@@ -34,10 +36,13 @@ Use these endpoint groups when querying pfSense through `scripts/pfchat_query.py
     - `interface`
 - `health`
   - preferred candidates:
-    - `system/stats`
     - `status/system`
+    - `system/stats`
+    - `system/status`
   - gateway candidates:
     - `status/gateways`
+    - `routing/gateways`
+    - `routing/gateway`
     - `status/gateway`
     - `system/gateways`
   - also includes:

@@ -26,6 +26,7 @@ Todos los cambios relevantes de este proyecto se documentan aquí.
 - Presets de automatización con `--once` y vistas reducidas con `--view` para workflows compactos
 - Mejor inferencia degradada de dispositivos desde firewall states, incluyendo interfaces, peer counts y pistas de confianza
 - Compatibilidad más amplia de endpoints con variantes singular/plural como `firewall/state`, `firewall/rule`, `interfaces` e `interface`
+- Fallbacks conservadores adicionales para ARP, leases DHCP, estado del sistema y gateways basados en patrones upstream/schema
 - Ampliadas las notas de variantes de endpoints desde el schema en vivo, incluyendo familias singular/plural, status/config y service/status
 - Cobertura explícita en la skill para preguntas sobre dirección WAN / IP pública del firewall, también en español
 - Fallback de configuración al archivo `pfchat/.env` basado en la ruta del script, para invocaciones desde otros canales/contextos

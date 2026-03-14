@@ -140,6 +140,7 @@ class PfSenseClient:
     def get_arp_table(self) -> list[dict[str, Any]]:
         return self._get_first_supported([
             "diagnostics/arp_table",
+            "diagnostics/arp_table/entry",
             "status/arp",
             "status/arp-table",
             "diag/arp",
@@ -149,6 +150,7 @@ class PfSenseClient:
     def get_dhcp_leases(self) -> list[dict[str, Any]]:
         return self._get_first_supported([
             "status/dhcp_server/leases",
+            "services/dhcp_server/leases",
             "services/dhcpd/leases",
             "status/dhcp_leases",
             "status/dhcp/leases",
@@ -179,14 +181,16 @@ class PfSenseClient:
 
     def get_system_stats(self) -> dict[str, Any]:
         return self._get_first_supported([
-            "system/stats",
             "status/system",
+            "system/stats",
+            "system/status",
         ])
 
     def get_gateways(self) -> list[dict[str, Any]]:
         return self._get_first_supported([
             "status/gateways",
             "routing/gateways",
+            "routing/gateway",
             "status/gateway",
             "system/gateways",
         ])
@@ -366,14 +370,14 @@ class PfSenseClient:
                 "exists": self._schema_cache_path().exists(),
             },
             "capabilities": {
-                "devices_arp": any(path in supported for path in ["diagnostics/arp_table", "status/arp", "status/arp-table", "diag/arp", "diagnostics/arp"]),
-                "devices_dhcp": any(path in supported for path in ["status/dhcp_server/leases", "services/dhcpd/leases", "status/dhcp_leases", "status/dhcp/leases"]),
+                "devices_arp": any(path in supported for path in ["diagnostics/arp_table", "diagnostics/arp_table/entry", "status/arp", "status/arp-table", "diag/arp", "diagnostics/arp"]),
+                "devices_dhcp": any(path in supported for path in ["status/dhcp_server/leases", "services/dhcp_server/leases", "services/dhcpd/leases", "status/dhcp_leases", "status/dhcp/leases"]),
                 "connections": any(path in supported for path in ["firewall/states", "firewall/state"]),
                 "logs_firewall": any(path in supported for path in ["status/logs/firewall", "status/log/firewall", "log/firewall"]),
                 "rules": any(path in supported for path in ["firewall/rules", "firewall/rule"]),
                 "interfaces": any(path in supported for path in ["status/interfaces", "interfaces", "interface"]),
-                "system_status": any(path in supported for path in ["status/system", "system/stats"]),
-                "gateways": any(path in supported for path in ["status/gateways", "routing/gateways", "status/gateway", "system/gateways"]),
+                "system_status": any(path in supported for path in ["status/system", "system/stats", "system/status"]),
+                "gateways": any(path in supported for path in ["status/gateways", "routing/gateways", "routing/gateway", "status/gateway", "system/gateways"]),
             },
         }
 
