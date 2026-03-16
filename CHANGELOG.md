@@ -4,11 +4,30 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added initial ntopng REST API integration with project-local environment variables for `NTOPNG_BASE_URL`, `NTOPNG_USERNAME`, `NTOPNG_PASSWORD`, and `NTOPNG_VERIFY_SSL`.
+- Added first-pass ntopng commands: `ntop-capabilities`, `ntop-hosts`, and `ntop-host`.
+- Added reusable `pfchat/scripts/ntopng_client.py` plus unit coverage for the initial ntopng transport layer.
+- Added documentation for ntopng-backed command output shapes and example invocation.
+- Added `quick-egress-block` and `quick-egress-unblock` for immediate host-specific outbound TCP/UDP port or ICMP toggles using temporary floating+quick rules on the resolved interface.
+- Quick egress operations now clear matching firewall states after apply so the effect is immediate during live testing.
+
+### Planned
+
+- Next ntopng work will refactor the current direct endpoint support into a normalized adapter architecture with capability detection, shared host identity resolution, and clean PfChat-native output before expanding into alerts, applications, top talkers, and history.
+
+### Validated
+
+- Real pfSense validation for `quick-egress-block` / `quick-egress-unblock` against `sniperhack.uzc` for outbound ICMP and `tcp/443`, with final verification confirming no residual quick rules remained.
+
 ### Fixed
 
 - Daily summary email now ranks internal clients by aggregated LAN traffic instead of nonexistent device fields
 - Daily summary email now excludes loopback and WAN-duplicate state entries from top-flow reporting
 - Daily summary email blocked-log highlights now prefer meaningful block events over noisy multicast/mDNS/IGMP chatter
+- Daily summary traffic selection now uses real private-IP detection instead of a broad `172.*` prefix match
+- Daily summary flow ranking no longer depends on a hard-coded pfSense interface name like `vtnet0`
 
 ## [0.2.0] - 2026-03-14
 

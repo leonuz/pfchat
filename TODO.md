@@ -4,6 +4,13 @@ Project backlog, organized by priority.
 
 ## High priority
 
+### ntopng integration architecture
+
+- [ ] Refactor the current ntopng support into a two-layer design: low-level transport/auth client plus a higher-level normalization/aggregation adapter
+- [ ] Add ntopng capability detection that distinguishes REST v1/v2, alerts, timeseries, and historical-flow support instead of assuming a uniform install
+- [ ] Add shared host identity resolution across pfSense + ntopng inputs (hostname, FQDN, IP, alias, VLAN-aware host key)
+- [ ] Keep ntopng commands returning PfChat-native normalized JSON instead of leaking raw endpoint-specific response shapes
+
 - [x] Add safe administrative firewall actions for blocking an IP/device using `draft -> preview -> apply -> audit` workflow
 - [x] Strengthen rollback using pfSense-native object identifiers where available instead of descriptive delete heuristics
 - [x] Add live-fire validation against a controlled lab target before recommending production use
@@ -20,6 +27,9 @@ Project backlog, organized by priority.
 ## Medium priority
 
 - [ ] Add a documented and automatable Telegram summary/alert workflow on top of OpenClaw
+- [ ] Add ntopng top-talkers support backed by normalized adapter output rather than direct raw endpoint passthrough
+- [ ] Add ntopng alerts support (global + per-host) with severity normalization
+- [ ] Add ntopng host application/protocol summaries (L7) through a stable PfChat output model
 - [x] Discover more real-world pfSense REST API endpoint variants
 - [x] Add a `--once` mode or automation-oriented presets
 - [x] Improve snapshot output to summarize findings more compactly
@@ -35,6 +45,7 @@ Project backlog, organized by priority.
 ### Ideas to explore
 
 - [ ] Evaluate whether real 72h-per-device historical activity can be exposed through ntopng, Insight, or another pfSense-adjacent source instead of only current states/logs
+- [ ] Detect and use ntopng timeseries/history endpoints opportunistically, but degrade cleanly when ClickHouse/Pro-backed features are absent
 - [ ] If no native historical API is available, design a lightweight OpenClaw snapshot/retention workflow to build short-term host activity history over time
 
 - [ ] Support Markdown/HTML report export

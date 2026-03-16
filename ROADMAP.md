@@ -40,6 +40,9 @@ Initial scope:
 
 ## Medium term
 
+- ntopng adapter layer that normalizes REST v1/v2, alerts, timeseries, and historical-flow responses into PfChat-native JSON
+- shared host identity resolution across pfSense inventory + ntopng host keys (`ip`, `hostname`, `FQDN`, `ip@vlan`)
+- ntopng-backed top talkers, alerts, and host application summaries built on the adapter instead of raw endpoint passthrough
 - Telegram summary and alert workflow on top of OpenClaw
 - better support for multiple LAN/VLAN segments in inventory output
 - broader compatibility with real-world pfSense REST API route variants
