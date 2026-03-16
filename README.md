@@ -8,6 +8,8 @@ PfChat is an OpenClaw skill for querying and analyzing a pfSense firewall in rea
 
 It can also query ntopng over its REST API for host-level visibility that complements pfSense state/log data.
 
+The ntopng integration is being built around a normalized adapter model so PfChat can return stable JSON even when ntopng uses mixed endpoint families or installation-specific capabilities.
+
 It is model-agnostic: the skill fetches live data from pfSense and lets the current OpenClaw agent analyze it, instead of locking the workflow to a specific LLM provider.
 
 ## What it does
@@ -23,6 +25,7 @@ It is model-agnostic: the skill fetches live data from pfSense and lets the curr
 - Discover supported capabilities from the live OpenAPI schema
 - Cache the OpenAPI schema locally to reduce repeated fetches
 - Query ntopng active hosts and host details through its REST API
+- Normalize ntopng host output into PfChat-native JSON with capability probing and host identity resolution
 
 ## Prerequisites on pfSense
 
@@ -115,9 +118,11 @@ Notes:
 - `PFSENSE_API_KEY` must be a real key, not the example placeholder.
 - `PFSENSE_VERIFY_SSL` accepts `true/false`, `1/0`, `yes/no`, or `on/off`.
 - `NTOPNG_BASE_URL` must be a full URL such as `https://192.168.0.254:3000`.
-- `NTOPNG_USERNAME` / `NTOPNG_PASSWORD` are used for Basic Auth against ntopng REST endpoints.
+- `NTOPNG_USERNAME` / `NTOPNG_PASSWORD` are used for Basic Auth against ntopng REST endpoints when HTTP API auth is enabled in ntopng.
+- `NTOPNG_AUTH_TOKEN` is an optional alternative that takes precedence over username/password when present.
 - `NTOPNG_VERIFY_SSL` accepts the same boolean forms as pfSense SSL verification.
-- Do not commit real API keys or ntopng credentials.
+- If ntopng returns the HTML login page instead of JSON, enable HTTP API auth in ntopng or generate a user authentication token and set `NTOPNG_AUTH_TOKEN`.
+- Do not commit real API keys, ntopng credentials, or ntopng tokens.
 
 ### 2. Run direct queries
 

@@ -187,6 +187,7 @@ Top-level shape:
 Purpose:
 - confirm ntopng connectivity
 - expose current ntopng-backed feature availability
+- distinguish transport-level support from higher-value domains such as alerts or historical flows
 
 Top-level shape:
 
@@ -194,12 +195,20 @@ Top-level shape:
 {
   "ntopng_available": true,
   "capabilities": {
+    "rest_v1": true,
+    "rest_v2": false,
     "interfaces": true,
     "active_hosts": true,
     "host_data": true,
+    "alerts": false,
+    "timeseries": true,
     "historical_flows": false
   },
-  "interface_count": 1
+  "interface_count": 1,
+  "probes": {
+    "interfaces_v1": {"ok": true},
+    "historical_flows_pro_v2": {"ok": false}
+  }
 }
 ```
 
@@ -207,6 +216,7 @@ Top-level shape:
 
 Purpose:
 - show active hosts observed by ntopng on a monitored interface
+- return PfChat-normalized host rows instead of raw ntopng payloads
 
 Top-level shape:
 
@@ -217,9 +227,21 @@ Top-level shape:
   "hosts": [
     {
       "ip": "192.168.0.95",
-      "name": "iphoneLeo",
-      "first_seen": 1710600000,
-      "last_seen": 1710600300
+      "hostname": "iphoneLeo",
+      "vlan": 0,
+      "ntop_host_key": "192.168.0.95@0",
+      "first_seen_epoch": 1710600000,
+      "last_seen_epoch": 1710600300,
+      "bytes": {
+        "total": 123456,
+        "sent": 45678,
+        "received": 77778
+      },
+      "flows": {
+        "total": 4,
+        "as_client": 3,
+        "as_server": 1
+      }
     }
   ],
   "applied_filters": {
@@ -232,30 +254,43 @@ Top-level shape:
 
 Purpose:
 - get a compact ntopng summary for one host
+- include resolved identity metadata from pfSense + ntopng when available
 
 Top-level shape:
 
 ```json
 {
-  "host": "192.168.0.95",
-  "ifid": 0,
-  "name": "iphoneLeo",
-  "seen_first_epoch": 1710600000,
-  "seen_last_epoch": 1710600300,
-  "bytes": {
-    "total": 123456,
-    "sent": 45678,
-    "received": 77778
+  "host": {
+    "input": "ferpad.uzc",
+    "ip": "192.168.0.160",
+    "hostname": "ferpad",
+    "vlan": 0,
+    "ntop_host_key": "192.168.0.160@0",
+    "status": "active"
   },
-  "flows": {
-    "as_client": 4,
-    "as_server": 1,
-    "total_server": 1
+  "activity": {
+    "first_seen_epoch": 1710600000,
+    "last_seen_epoch": 1710600300,
+    "bytes_total": 123456,
+    "bytes_sent": 45678,
+    "bytes_received": 77778,
+    "flows_as_client": 4,
+    "flows_as_server": 1,
+    "active_alerted_flows": 0
   },
-  "asn": 714,
-  "asname": "APPLE",
-  "country": "US",
-  "is_blacklisted": false
+  "network": {
+    "asn": 714,
+    "asname": "APPLE",
+    "country": "US",
+    "blacklisted": false
+  },
+  "resolution": {
+    "resolved_ip": "192.168.0.160",
+    "resolved_hostname": "ferpad",
+    "sources": ["pfsense_devices", "ntopng_active_hosts"],
+    "confidence": "high"
+  },
+  "confidence": "high"
 }
 ```
 

@@ -27,6 +27,7 @@ from typing import Any
 
 from pfsense_client import PfSenseClient
 from ntopng_client import NtopngClient
+from ntopng_adapter import NtopngAdapter
 
 
 FILTERLOG_RE = re.compile(
@@ -119,7 +120,7 @@ def validate_url_base(url: str, env_name: str) -> str:
     return url
 
 
-def load_ntopng_config() -> tuple[str, str, str, bool]:
+def load_ntopng_config() -> tuple[str, str, str, str, bool]:
     script_root = Path(__file__).resolve().parents[2]
     load_env_file(script_root / '.env')
     load_env_file(Path('.env'))
@@ -127,12 +128,13 @@ def load_ntopng_config() -> tuple[str, str, str, bool]:
     base_url = validate_url_base(os.environ.get('NTOPNG_BASE_URL', ''), 'NTOPNG_BASE_URL')
     username = os.environ.get('NTOPNG_USERNAME', '').strip()
     password = os.environ.get('NTOPNG_PASSWORD', '').strip()
-    if not username:
-        raise SystemExit('Missing NTOPNG_USERNAME. Set it in the environment or in a local .env file.')
-    if not password:
-        raise SystemExit('Missing NTOPNG_PASSWORD. Set it in the environment or in a local .env file.')
+    auth_token = os.environ.get('NTOPNG_AUTH_TOKEN', '').strip()
+    if not auth_token and not username:
+        raise SystemExit('Missing NTOPNG_USERNAME. Set it in the environment or in a local .env file, or provide NTOPNG_AUTH_TOKEN.')
+    if not auth_token and not password:
+        raise SystemExit('Missing NTOPNG_PASSWORD. Set it in the environment or in a local .env file, or provide NTOPNG_AUTH_TOKEN.')
     verify_ssl = parse_bool_env('NTOPNG_VERIFY_SSL', 'false')
-    return base_url, username, password, verify_ssl
+    return base_url, username, password, auth_token, verify_ssl
 
 
 def parse_filters(values: list[str]) -> dict[str, Any]:
@@ -991,10 +993,12 @@ def main() -> int:
         client = None
 
     if args.command in ntop_commands:
-        base_url, username, password, ntop_verify_ssl = load_ntopng_config()
-        ntop_client = NtopngClient(base_url=base_url, username=username, password=password, verify_ssl=ntop_verify_ssl)
+        base_url, username, password, auth_token, ntop_verify_ssl = load_ntopng_config()
+        ntop_client = NtopngClient(base_url=base_url, username=username, password=password, auth_token=auth_token, verify_ssl=ntop_verify_ssl)
+        ntop_adapter = NtopngAdapter(ntop_client=ntop_client, pfsense_client=client)
     else:
         ntop_client = None
+        ntop_adapter = None
 
     if args.command == "capabilities":
         data = client.get_capabilities()
@@ -1037,24 +1041,14 @@ def main() -> int:
         rules = client.get_firewall_rules(filters=base_filters or None)
         data = {"total_rules": len(rules), "rules": rules, "applied_filters": base_filters}
     elif args.command == 'ntop-capabilities':
-        data = ntop_client.get_capabilities()
+        data = ntop_adapter.get_capabilities()
     elif args.command == 'ntop-hosts':
-        hosts = ntop_client.get_active_hosts(ifid=args.ifid, per_page=args.limit)
-        rows = hosts.get('data', []) if isinstance(hosts, dict) else []
-        if args.host:
-            host_filter = args.host.lower()
-            rows = [row for row in rows if host_filter in str(row.get('ip', '')).lower() or host_filter in str(row.get('name', '')).lower()]
-        data = {
-            'ifid': args.ifid,
-            'total_active_hosts': len(rows),
-            'hosts': rows,
-            'applied_filters': {'host': args.host},
-        }
+        data = ntop_adapter.get_active_hosts(ifid=args.ifid, limit=args.limit, host_filter=args.host)
     elif args.command == 'ntop-host':
         target_host = args.host or args.target
         if not target_host:
             raise SystemExit('Missing --host or --target for ntop-host.')
-        data = ntop_client.summarize_host(host=target_host, ifid=args.ifid)
+        data = ntop_adapter.get_host_summary(target=target_host, ifid=args.ifid)
     elif args.command in {"block-ip", "block-device"}:
         data = save_draft(build_block_draft(client, args.target or '', args.command))
     elif args.command == 'block-egress-port':

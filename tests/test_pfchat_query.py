@@ -54,6 +54,18 @@ class PfChatQueryTests(unittest.TestCase):
             'https://192.168.0.10:3000'
         )
 
+    def test_load_ntopng_config_accepts_token_without_password(self) -> None:
+        import os
+        os.environ['NTOPNG_BASE_URL'] = 'https://192.168.0.10:3000'
+        os.environ['NTOPNG_USERNAME'] = ''
+        os.environ['NTOPNG_PASSWORD'] = ''
+        os.environ['NTOPNG_AUTH_TOKEN'] = 'abc123'
+        os.environ['NTOPNG_VERIFY_SSL'] = 'false'
+        base_url, username, password, auth_token, verify_ssl = pfchat_query.load_ntopng_config()
+        self.assertEqual(base_url, 'https://192.168.0.10:3000')
+        self.assertEqual(auth_token, 'abc123')
+        self.assertFalse(verify_ssl)
+
     def test_parse_filters_supports_scalar_and_array(self) -> None:
         parsed = pfchat_query.parse_filters([
             'descr__contains=OpenVPN',

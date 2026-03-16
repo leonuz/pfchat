@@ -6,16 +6,21 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Added initial ntopng REST API integration with project-local environment variables for `NTOPNG_BASE_URL`, `NTOPNG_USERNAME`, `NTOPNG_PASSWORD`, and `NTOPNG_VERIFY_SSL`.
+- Added initial ntopng REST API integration with project-local environment variables for `NTOPNG_BASE_URL`, `NTOPNG_USERNAME`, `NTOPNG_PASSWORD`, `NTOPNG_AUTH_TOKEN`, and `NTOPNG_VERIFY_SSL`.
 - Added first-pass ntopng commands: `ntop-capabilities`, `ntop-hosts`, and `ntop-host`.
 - Added reusable `pfchat/scripts/ntopng_client.py` plus unit coverage for the initial ntopng transport layer.
 - Added documentation for ntopng-backed command output shapes and example invocation.
 - Added `quick-egress-block` and `quick-egress-unblock` for immediate host-specific outbound TCP/UDP port or ICMP toggles using temporary floating+quick rules on the resolved interface.
 - Quick egress operations now clear matching firewall states after apply so the effect is immediate during live testing.
 
+### Changed
+
+- ntopng command handling now routes through an adapter layer that normalizes host output and shared identity resolution instead of returning raw endpoint-shaped payloads directly.
+- ntopng transport now fails cleanly when the appliance returns the HTML login page, guiding the operator toward HTTP API auth or token-based auth instead of a JSON parse traceback.
+
 ### Planned
 
-- Next ntopng work will refactor the current direct endpoint support into a normalized adapter architecture with capability detection, shared host identity resolution, and clean PfChat-native output before expanding into alerts, applications, top talkers, and history.
+- Next ntopng work will expand the adapter architecture into alerts, applications, top talkers, and history after the capability detection and host identity groundwork.
 
 ### Validated
 
