@@ -18,10 +18,15 @@ All notable changes to this project will be documented in this file.
 - ntopng command handling now routes through an adapter layer that normalizes host output and shared identity resolution instead of returning raw endpoint-shaped payloads directly.
 - ntopng transport now fails cleanly when the appliance returns the HTML login page, guiding the operator toward HTTP API auth or token-based auth instead of a JSON parse traceback.
 
+### Added
+
+- Added a lightweight Python-API-style ntopng backend in `pfchat/scripts/ntopng_pyapi_backend.py` that follows the official object model (`Ntopng` / `Interface` / `Historical`) while keeping PfChat control over SSL verification and response parsing.
+
 ### Validated
 
 - Verified that the official ntopng Python API package can be installed and imported in a local virtualenv on this host.
-- Verified that, with the current ntopng instance settings/credentials, the official Python API self-test still fails with `Invalid credentials or URL specified`, which is consistent with the direct REST/API probes returning the ntopng HTML login flow instead of JSON.
+- Verified that the official Python API self-test still fails against this ntopng instance because `connect/test.lua` returns an embedded raw HTTP response inside the body, which breaks normal JSON parsing.
+- Verified that direct `curl` auth works and that the new lightweight backend can successfully retrieve live ntopng data (`connect/test`, interfaces, active hosts, interface stats, and L7 stats) by sanitizing the malformed `connect/test.lua` body before JSON parsing.
 
 ### Planned
 
