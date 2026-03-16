@@ -10,6 +10,8 @@ Project backlog, organized by priority.
 - [x] Add ntopng capability detection that distinguishes REST v1/v2, alerts, timeseries, and historical-flow support instead of assuming a uniform install
 - [x] Add shared host identity resolution across pfSense + ntopng inputs (hostname, FQDN, IP, alias, VLAN-aware host key)
 - [x] Keep ntopng commands returning PfChat-native normalized JSON instead of leaking raw endpoint-specific response shapes
+- [ ] Fix ntopng-side API authentication so direct REST probes and the official Python API self-test both return JSON instead of the GUI login page / invalid-credentials failure
+- [ ] Evaluate replacing the custom ntopng transport path with the official Python API once authentication is working end-to-end
 
 - [x] Add safe administrative firewall actions for blocking an IP/device using `draft -> preview -> apply -> audit` workflow
 - [x] Strengthen rollback using pfSense-native object identifiers where available instead of descriptive delete heuristics

@@ -18,9 +18,15 @@ All notable changes to this project will be documented in this file.
 - ntopng command handling now routes through an adapter layer that normalizes host output and shared identity resolution instead of returning raw endpoint-shaped payloads directly.
 - ntopng transport now fails cleanly when the appliance returns the HTML login page, guiding the operator toward HTTP API auth or token-based auth instead of a JSON parse traceback.
 
+### Validated
+
+- Verified that the official ntopng Python API package can be installed and imported in a local virtualenv on this host.
+- Verified that, with the current ntopng instance settings/credentials, the official Python API self-test still fails with `Invalid credentials or URL specified`, which is consistent with the direct REST/API probes returning the ntopng HTML login flow instead of JSON.
+
 ### Planned
 
 - Next ntopng work will expand the adapter architecture into alerts, applications, top talkers, and history after the capability detection and host identity groundwork.
+- Before depending on the official Python API for live ntopng data, fix ntopng-side API authentication so `/lua/rest/v2/connect/test.lua` returns JSON under the configured credentials.
 
 ### Validated
 
