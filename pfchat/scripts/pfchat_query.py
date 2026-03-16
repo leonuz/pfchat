@@ -28,6 +28,7 @@ from typing import Any
 from pfsense_client import PfSenseClient
 from ntopng_client import NtopngClient
 from ntopng_adapter import NtopngAdapter
+from ntopng_pyapi_backend import NtopngPyApiBackend
 
 
 FILTERLOG_RE = re.compile(
@@ -995,9 +996,11 @@ def main() -> int:
     if args.command in ntop_commands:
         base_url, username, password, auth_token, ntop_verify_ssl = load_ntopng_config()
         ntop_client = NtopngClient(base_url=base_url, username=username, password=password, auth_token=auth_token, verify_ssl=ntop_verify_ssl)
-        ntop_adapter = NtopngAdapter(ntop_client=ntop_client, pfsense_client=client)
+        ntop_backend = NtopngPyApiBackend(url=base_url, username=username, password=password, auth_token=auth_token, verify_ssl=ntop_verify_ssl)
+        ntop_adapter = NtopngAdapter(ntop_client=ntop_backend, pfsense_client=client)
     else:
         ntop_client = None
+        ntop_backend = None
         ntop_adapter = None
 
     if args.command == "capabilities":

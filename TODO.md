@@ -10,7 +10,7 @@ Project backlog, organized by priority.
 - [x] Add ntopng capability detection that distinguishes REST v1/v2, alerts, timeseries, and historical-flow support instead of assuming a uniform install
 - [x] Add shared host identity resolution across pfSense + ntopng inputs (hostname, FQDN, IP, alias, VLAN-aware host key)
 - [x] Keep ntopng commands returning PfChat-native normalized JSON instead of leaking raw endpoint-specific response shapes
-- [ ] Decide whether to replace the current custom ntopng transport path with the new lightweight Python-API-style backend for live queries
+- [x] Decide whether to replace the current custom ntopng transport path with the new lightweight Python-API-style backend for live queries
 - [ ] Investigate whether the malformed `connect/test.lua` response body is a version-specific ntopng bug/proxy quirk worth working around more generally
 
 - [x] Add safe administrative firewall actions for blocking an IP/device using `draft -> preview -> apply -> audit` workflow
