@@ -46,6 +46,14 @@ class PfChatQueryTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             pfchat_query.validate_api_key('replace-me')
 
+    def test_validate_url_base_requires_http_scheme(self) -> None:
+        with self.assertRaises(SystemExit):
+            pfchat_query.validate_url_base('192.168.0.10:3000', 'NTOPNG_BASE_URL')
+        self.assertEqual(
+            pfchat_query.validate_url_base('https://192.168.0.10:3000/', 'NTOPNG_BASE_URL'),
+            'https://192.168.0.10:3000'
+        )
+
     def test_parse_filters_supports_scalar_and_array(self) -> None:
         parsed = pfchat_query.parse_filters([
             'descr__contains=OpenVPN',
@@ -98,6 +106,21 @@ class PfChatQueryTests(unittest.TestCase):
         data = {'summary': {'highlights': ['ok']}, 'other': 1}
         rendered = pfchat_query.render_view(data, 'summary')
         self.assertEqual(rendered, {'highlights': ['ok']})
+
+    def test_ntop_hosts_command_filters_by_host(self) -> None:
+        class Args:
+            command = 'ntop-hosts'
+            ifid = 0
+            limit = 50
+            host = '192.168.0.95'
+        rows = [
+            {'ip': '192.168.0.95', 'name': 'iphoneLeo'},
+            {'ip': '192.168.0.52', 'name': 'samsung'},
+        ]
+        hosts = {'data': rows}
+        filtered = [row for row in hosts.get('data', []) if Args.host.lower() in str(row.get('ip', '')).lower() or Args.host.lower() in str(row.get('name', '')).lower()]
+        self.assertEqual(len(filtered), 1)
+        self.assertEqual(filtered[0]['name'], 'iphoneLeo')
 
     def test_build_block_draft_for_device_target(self) -> None:
         class Client:
@@ -156,6 +179,67 @@ class PfChatQueryTests(unittest.TestCase):
         self.assertEqual(draft['proposal']['rule_protocol'], 'icmp')
         self.assertNotIn('destination_port', draft['proposal'])
         self.assertIn('icmp', draft['proposal']['rule_description'])
+
+    def test_build_quick_rule_payload_for_icmp(self) -> None:
+        payload = pfchat_query.build_quick_rule_payload('lan', 'sniperhack', '192.168.0.81', 'icmp')
+        self.assertTrue(payload['floating'])
+        self.assertTrue(payload['quick'])
+        self.assertEqual(payload['protocol'], 'icmp')
+        self.assertEqual(payload['icmptype'], ['any'])
+        self.assertNotIn('destination_port', payload)
+
+    def test_state_matches_target_for_tcp_port(self) -> None:
+        state = {'source': '192.168.0.81:51514', 'destination': '1.1.1.1:443', 'protocol': 'tcp'}
+        self.assertTrue(pfchat_query.state_matches_target(state, '192.168.0.81', 'tcp', '443'))
+        self.assertFalse(pfchat_query.state_matches_target(state, '192.168.0.81', 'tcp', '80'))
+
+    def test_quick_egress_block_creates_rule_and_clears_states(self) -> None:
+        class Client:
+            def get_connected_devices(self):
+                return {'devices': [{'hostname': 'sniperhack', 'ip_address': '192.168.0.81', 'interface': 'LAN'}]}
+            def get_firewall_rules(self):
+                return []
+            def create_firewall_rule(self, payload):
+                self.rule_payload = payload
+                return {'id': 9, 'status': 'ok'}
+            def apply_firewall_changes(self, payload):
+                self.apply_payload = payload
+                return {'applied': True}
+            def get_firewall_states(self, limit=500, filters=None):
+                self.state_filters = filters
+                return [{'id': 211, 'source': '192.168.0.81:51514', 'destination': '1.1.1.1:443', 'protocol': 'tcp'}]
+            def delete_firewall_state(self, state_id):
+                self.deleted_state_id = state_id
+                return {'deleted': True}
+        client = Client()
+        result = pfchat_query.quick_egress_block(client, 'sniperhack', 'tcp', port='443')
+        self.assertEqual(result['status'], 'blocked')
+        self.assertEqual(client.rule_payload['destination_port'], '443')
+        self.assertTrue(client.rule_payload['floating'])
+        self.assertEqual(client.deleted_state_id, 211)
+
+    def test_quick_egress_unblock_deletes_matching_rule_and_state(self) -> None:
+        class Client:
+            def get_connected_devices(self):
+                return {'devices': [{'hostname': 'sniperhack', 'ip_address': '192.168.0.81', 'interface': 'LAN'}]}
+            def get_firewall_rules(self):
+                return [{'id': 5, 'descr': 'PfChat quick egress block for sniperhack (192.168.0.81) tcp/443', 'source': '192.168.0.81', 'protocol': 'tcp', 'destination_port': '443'}]
+            def delete_firewall_rule(self, rule_id):
+                self.deleted_rule_id = rule_id
+                return {'deleted': True}
+            def apply_firewall_changes(self, payload):
+                self.apply_payload = payload
+                return {'applied': True}
+            def get_firewall_states(self, limit=500, filters=None):
+                return [{'id': 212, 'source': '192.168.0.81:51514', 'destination': '1.1.1.1:443', 'protocol': 'tcp'}]
+            def delete_firewall_state(self, state_id):
+                self.deleted_state_id = state_id
+                return {'deleted': True}
+        client = Client()
+        result = pfchat_query.quick_egress_unblock(client, 'sniperhack', 'tcp', port='443')
+        self.assertEqual(result['status'], 'unblocked')
+        self.assertEqual(client.deleted_rule_id, 5)
+        self.assertEqual(client.deleted_state_id, 212)
 
     def test_save_and_load_draft_roundtrip(self) -> None:
         draft = {

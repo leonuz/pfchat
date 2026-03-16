@@ -182,6 +182,83 @@ Top-level shape:
 }
 ```
 
+## `ntop-capabilities`
+
+Purpose:
+- confirm ntopng connectivity
+- expose current ntopng-backed feature availability
+
+Top-level shape:
+
+```json
+{
+  "ntopng_available": true,
+  "capabilities": {
+    "interfaces": true,
+    "active_hosts": true,
+    "host_data": true,
+    "historical_flows": false
+  },
+  "interface_count": 1
+}
+```
+
+## `ntop-hosts`
+
+Purpose:
+- show active hosts observed by ntopng on a monitored interface
+
+Top-level shape:
+
+```json
+{
+  "ifid": 0,
+  "total_active_hosts": 2,
+  "hosts": [
+    {
+      "ip": "192.168.0.95",
+      "name": "iphoneLeo",
+      "first_seen": 1710600000,
+      "last_seen": 1710600300
+    }
+  ],
+  "applied_filters": {
+    "host": "192.168.0.95"
+  }
+}
+```
+
+## `ntop-host`
+
+Purpose:
+- get a compact ntopng summary for one host
+
+Top-level shape:
+
+```json
+{
+  "host": "192.168.0.95",
+  "ifid": 0,
+  "name": "iphoneLeo",
+  "seen_first_epoch": 1710600000,
+  "seen_last_epoch": 1710600300,
+  "bytes": {
+    "total": 123456,
+    "sent": 45678,
+    "received": 77778
+  },
+  "flows": {
+    "as_client": 4,
+    "as_server": 1,
+    "total_server": 1
+  },
+  "asn": 714,
+  "asname": "APPLE",
+  "country": "US",
+  "is_blacklisted": false
+}
+```
+
 ## `rules`
 
 Purpose:

@@ -6,6 +6,8 @@
 
 PfChat is an OpenClaw skill for querying and analyzing a pfSense firewall in real time through the pfSense REST API.
 
+It can also query ntopng over its REST API for host-level visibility that complements pfSense state/log data.
+
 It is model-agnostic: the skill fetches live data from pfSense and lets the current OpenClaw agent analyze it, instead of locking the workflow to a specific LLM provider.
 
 ## What it does
@@ -20,6 +22,7 @@ It is model-agnostic: the skill fetches live data from pfSense and lets the curr
 - Add a compact `summary` layer inside snapshots for faster answers and reports
 - Discover supported capabilities from the live OpenAPI schema
 - Cache the OpenAPI schema locally to reduce repeated fetches
+- Query ntopng active hosts and host details through its REST API
 
 ## Prerequisites on pfSense
 
@@ -111,7 +114,10 @@ Notes:
 - `PFSENSE_HOST` must be only the hostname or IP. Do not include `https://` or URL paths.
 - `PFSENSE_API_KEY` must be a real key, not the example placeholder.
 - `PFSENSE_VERIFY_SSL` accepts `true/false`, `1/0`, `yes/no`, or `on/off`.
-- Do not commit real API keys.
+- `NTOPNG_BASE_URL` must be a full URL such as `https://192.168.0.254:3000`.
+- `NTOPNG_USERNAME` / `NTOPNG_PASSWORD` are used for Basic Auth against ntopng REST endpoints.
+- `NTOPNG_VERIFY_SSL` accepts the same boolean forms as pfSense SSL verification.
+- Do not commit real API keys or ntopng credentials.
 
 ### 2. Run direct queries
 
@@ -123,6 +129,9 @@ python3 pfchat/scripts/pfchat_query.py snapshot --limit 150
 python3 pfchat/scripts/pfchat_query.py --once compact
 python3 pfchat/scripts/pfchat_query.py --once wan
 python3 pfchat/scripts/pfchat_query.py --once blocked
+python3 pfchat/scripts/pfchat_query.py ntop-capabilities
+python3 pfchat/scripts/pfchat_query.py ntop-hosts --ifid 0 --limit 50
+python3 pfchat/scripts/pfchat_query.py ntop-host --host 192.168.0.95 --ifid 0
 ```
 
 ### 3. Use from OpenClaw
@@ -217,6 +226,10 @@ python3 pfchat/scripts/pfchat_query.py block-device --target iphoneLeo
 python3 pfchat/scripts/pfchat_query.py block-device --target 192.168.0.95
 python3 pfchat/scripts/pfchat_query.py block-egress-port --target sniperhack --port 80 --proto tcp
 python3 pfchat/scripts/pfchat_query.py block-egress-proto --target sniperhack --proto icmp
+python3 pfchat/scripts/pfchat_query.py quick-egress-block --target sniperhack --proto tcp --port 443
+python3 pfchat/scripts/pfchat_query.py quick-egress-block --target sniperhack --proto icmp
+python3 pfchat/scripts/pfchat_query.py quick-egress-unblock --target sniperhack --proto tcp --port 443
+python3 pfchat/scripts/pfchat_query.py quick-egress-unblock --target sniperhack --proto icmp
 python3 pfchat/scripts/pfchat_query.py unblock-ip --target 1.2.3.4
 python3 pfchat/scripts/pfchat_query.py unblock-device --target sniperhack
 python3 pfchat/scripts/pfchat_query.py draft-list
@@ -234,7 +247,8 @@ Current behavior:
 - resolves the target
 - proposes alias/rule metadata
 - saves the proposal locally with a `draft_id`
-- supports `draft-show`, `draft-list`, `apply-draft`, `rollback-draft`, `pfchat-managed-list`, `pfchat-managed-cleanup`, `unblock-ip`, `unblock-device`, `block-egress-port`, and `block-egress-proto`
+- supports `draft-show`, `draft-list`, `apply-draft`, `rollback-draft`, `pfchat-managed-list`, `pfchat-managed-cleanup`, `unblock-ip`, `unblock-device`, `block-egress-port`, `block-egress-proto`, `quick-egress-block`, and `quick-egress-unblock`
+- quick egress operations use temporary `floating + quick` rules and clear matching states for immediate effect
 - `apply-draft` without `--confirm` only previews and audits intent
 - `apply-draft --confirm` executes alias + rule + firewall apply only when schema support is confirmed
 - repeated apply attempts on an already applied draft are treated as idempotent and do not re-run writes
@@ -316,6 +330,8 @@ Included local script:
 On this host, the correct way for cron jobs and isolated sessions to inherit global variables is to load them from the `openclaw-gateway.service` unit through `EnvironmentFile`.
 
 PfChat reports should prefer device names from the local inventory (`TOOLS.md`). If no local mapping exists, they may use reverse lookup and keep the IP only as fallback detail.
+
+The daily summary script now ranks clients by aggregated private-source traffic from the sampled state table, filters multicast/broadcast/firewall-noise destinations, and does not depend on a hard-coded pfSense interface name like `vtnet0`.
 
 ## Tests
 

@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Any
 
 from pfsense_client import PfSenseClient
+from ntopng_client import NtopngClient
 
 
 FILTERLOG_RE = re.compile(
@@ -107,6 +108,31 @@ def load_config() -> tuple[str, str, bool]:
     verify_ssl = parse_bool_env("PFSENSE_VERIFY_SSL", "false")
 
     return host, api_key, verify_ssl
+
+
+def validate_url_base(url: str, env_name: str) -> str:
+    url = url.strip().rstrip('/')
+    if not url:
+        raise SystemExit(f"Missing {env_name}. Set it in the environment or in a local .env file.")
+    if not (url.startswith('http://') or url.startswith('https://')):
+        raise SystemExit(f"Invalid {env_name} value: {url!r}. Provide a full http:// or https:// base URL.")
+    return url
+
+
+def load_ntopng_config() -> tuple[str, str, str, bool]:
+    script_root = Path(__file__).resolve().parents[2]
+    load_env_file(script_root / '.env')
+    load_env_file(Path('.env'))
+
+    base_url = validate_url_base(os.environ.get('NTOPNG_BASE_URL', ''), 'NTOPNG_BASE_URL')
+    username = os.environ.get('NTOPNG_USERNAME', '').strip()
+    password = os.environ.get('NTOPNG_PASSWORD', '').strip()
+    if not username:
+        raise SystemExit('Missing NTOPNG_USERNAME. Set it in the environment or in a local .env file.')
+    if not password:
+        raise SystemExit('Missing NTOPNG_PASSWORD. Set it in the environment or in a local .env file.')
+    verify_ssl = parse_bool_env('NTOPNG_VERIFY_SSL', 'false')
+    return base_url, username, password, verify_ssl
 
 
 def parse_filters(values: list[str]) -> dict[str, Any]:
@@ -688,6 +714,161 @@ def cleanup_managed_target(client: PfSenseClient, target: str, confirm: bool = F
     return result
 
 
+def build_quick_rule_description(hostname: str, ip_value: str, proto: str, port: str | None = None) -> str:
+    suffix = f' {proto}/{port}' if port else f' {proto}'
+    return f'PfChat quick egress block for {hostname} ({ip_value}){suffix}'
+
+
+def build_quick_rule_payload(interface: str, hostname: str, ip_value: str, proto: str, port: str | None = None) -> dict[str, Any]:
+    proto_value = proto.lower()
+    payload = {
+        'interface': [interface],
+        'floating': True,
+        'quick': True,
+        'direction': 'in',
+        'type': 'block',
+        'ipprotocol': 'inet',
+        'protocol': proto_value,
+        'source': ip_value,
+        'destination': 'any',
+        'descr': build_quick_rule_description(hostname, ip_value, proto_value, port),
+        'log': True,
+        'statetype': 'keep state',
+    }
+    if proto_value == 'icmp':
+        payload['icmptype'] = ['any']
+    elif port:
+        payload['destination_port'] = str(port)
+    return payload
+
+
+def state_matches_target(state: dict[str, Any], ip_value: str, proto: str, port: str | None = None) -> bool:
+    if not isinstance(state, dict):
+        return False
+    source = str(state.get('source') or '')
+    if ip_value not in source:
+        return False
+    state_proto = str(state.get('protocol') or state.get('proto') or '').lower()
+    proto_value = proto.lower()
+    if proto_value == 'icmp':
+        return state_proto in {'icmp', 'icmpv4', '1', ''}
+    if state_proto != proto_value:
+        return False
+    if port:
+        return str(state.get('destination') or '').endswith(f':{port}')
+    return True
+
+
+def find_matching_quick_rules(client: PfSenseClient, ip_value: str, proto: str, port: str | None = None) -> list[dict[str, Any]]:
+    matches = []
+    expected_descr_suffix = f' {proto.lower()}/{port}' if port else f' {proto.lower()}'
+    for rule in client.get_firewall_rules():
+        if not isinstance(rule, dict):
+            continue
+        descr = str(rule.get('descr') or '')
+        if not descr.startswith('PfChat quick egress block for '):
+            continue
+        if str(rule.get('source') or '') != ip_value:
+            continue
+        if str(rule.get('protocol') or '').lower() != proto.lower():
+            continue
+        if port and str(rule.get('destination_port') or '') != str(port):
+            continue
+        if not port and str(rule.get('destination_port') or '') not in {'', 'None', 'null'}:
+            continue
+        if not descr.endswith(expected_descr_suffix):
+            continue
+        matches.append(rule)
+    return matches
+
+
+def clear_matching_states(client: PfSenseClient, ip_value: str, proto: str, port: str | None = None) -> list[dict[str, Any]]:
+    deleted = []
+    for state in client.get_firewall_states(limit=500, filters={'source__contains': ip_value}):
+        if not state_matches_target(state, ip_value, proto, port):
+            continue
+        state_id = state.get('id')
+        if state_id is None:
+            continue
+        deleted.append({
+            'id': state_id,
+            'source': state.get('source'),
+            'destination': state.get('destination'),
+            'protocol': state.get('protocol'),
+            'result': client.delete_firewall_state(state_id),
+        })
+    return deleted
+
+
+def quick_egress_block(client: PfSenseClient, target: str, proto: str, port: str | None = None) -> dict[str, Any]:
+    resolved = resolve_block_target(client, target, 'quick-egress-block')
+    ip_value = str(resolved.get('ip') or '').strip()
+    if not ip_value or not is_ip_address(ip_value):
+        raise SystemExit(f'Unable to resolve a valid IP address from target: {target!r}')
+    device = resolved.get('device') if isinstance(resolved.get('device'), dict) else {}
+    interface = str(device.get('interface') or '').strip().lower()
+    hostname = device.get('hostname') or device.get('dnsresolve') or ip_value
+    if not interface:
+        raise SystemExit('Quick egress block requires a resolved interface from device inventory.')
+    proto_value = proto.lower()
+    if proto_value not in {'tcp', 'udp', 'icmp'}:
+        raise SystemExit('Quick egress block supports only tcp, udp, or icmp.')
+    if proto_value in {'tcp', 'udp'} and (not port or not str(port).isdigit()):
+        raise SystemExit('Quick egress block for tcp/udp requires --port with a numeric destination port.')
+    if proto_value == 'icmp':
+        port = None
+
+    existing = find_matching_quick_rules(client, ip_value, proto_value, port)
+    if existing:
+        rule_result = {'status': 'exists', 'rules': existing}
+    else:
+        rule_result = client.create_firewall_rule(build_quick_rule_payload(interface, str(hostname), ip_value, proto_value, port))
+    apply_result = client.apply_firewall_changes({'async': False})
+    deleted_states = clear_matching_states(client, ip_value, proto_value, port)
+    append_audit({'ts': int(time.time()), 'event': 'quick_egress_block', 'target': {'input': resolved['input'], 'hostname': hostname, 'ip': ip_value}, 'proto': proto_value, 'port': port})
+    return {
+        'mode': 'quick-egress-block',
+        'status': 'blocked',
+        'target': {'input': resolved['input'], 'hostname': hostname, 'ip': ip_value, 'interface': interface},
+        'proto': proto_value,
+        'port': port,
+        'rule_result': rule_result,
+        'apply_result': apply_result,
+        'deleted_states': deleted_states,
+    }
+
+
+def quick_egress_unblock(client: PfSenseClient, target: str, proto: str, port: str | None = None) -> dict[str, Any]:
+    resolved = resolve_block_target(client, target, 'quick-egress-unblock')
+    ip_value = str(resolved.get('ip') or '').strip()
+    if not ip_value or not is_ip_address(ip_value):
+        raise SystemExit(f'Unable to resolve a valid IP address from target: {target!r}')
+    device = resolved.get('device') if isinstance(resolved.get('device'), dict) else {}
+    hostname = device.get('hostname') or device.get('dnsresolve') or ip_value
+    proto_value = proto.lower()
+    if proto_value == 'icmp':
+        port = None
+    rules = find_matching_quick_rules(client, ip_value, proto_value, port)
+    deleted_rules = []
+    for rule in rules:
+        if rule.get('id') is None:
+            continue
+        deleted_rules.append({'id': rule['id'], 'descr': rule.get('descr'), 'result': client.delete_firewall_rule(rule['id'])})
+    apply_result = client.apply_firewall_changes({'async': False}) if deleted_rules else None
+    deleted_states = clear_matching_states(client, ip_value, proto_value, port)
+    append_audit({'ts': int(time.time()), 'event': 'quick_egress_unblock', 'target': {'input': resolved['input'], 'hostname': hostname, 'ip': ip_value}, 'proto': proto_value, 'port': port})
+    return {
+        'mode': 'quick-egress-unblock',
+        'status': 'unblocked',
+        'target': {'input': resolved['input'], 'hostname': hostname, 'ip': ip_value},
+        'proto': proto_value,
+        'port': port,
+        'deleted_rules': deleted_rules,
+        'apply_result': apply_result,
+        'deleted_states': deleted_states,
+    }
+
+
 def execute_rollback_draft(client: PfSenseClient, draft: dict[str, Any], confirm: bool = False) -> dict[str, Any]:
     if draft.get('apply_status') != 'applied':
         raise SystemExit('Rollback requires a previously applied draft.')
@@ -772,7 +953,9 @@ def main() -> int:
         default='snapshot',
         choices=[
             "capabilities", "devices", "connections", "logs", "interfaces", "health", "rules", "snapshot",
-            "block-ip", "block-device", "block-egress-port", "block-egress-proto", "unblock-ip", "unblock-device", "draft-show", "draft-list", "apply-draft", "rollback-draft", "pfchat-managed-list", "pfchat-managed-cleanup"
+            "ntop-capabilities", "ntop-hosts", "ntop-host",
+            "block-ip", "block-device", "block-egress-port", "block-egress-proto", "unblock-ip", "unblock-device", "draft-show", "draft-list", "apply-draft", "rollback-draft", "pfchat-managed-list", "pfchat-managed-cleanup",
+            "quick-egress-block", "quick-egress-unblock"
         ],
         help="Dataset to fetch from pfSense",
     )
@@ -789,16 +972,29 @@ def main() -> int:
     parser.add_argument("--proto", choices=['tcp', 'udp', 'icmp'], default='tcp', help="Protocol for egress block workflows")
     parser.add_argument("--draft-id", help="Saved draft identifier for draft-show or apply-draft")
     parser.add_argument("--confirm", action="store_true", help="Explicitly confirm a state-changing apply-draft execution")
+    parser.add_argument("--ifid", type=int, default=0, help="ntopng interface id for ntop-* commands")
     args = parser.parse_args()
     args = apply_once_preset(args)
 
     base_filters = parse_filters(args.filter)
-    command_needs_client = args.command not in {'draft-show', 'draft-list'}
-    if command_needs_client:
+    pf_commands = {
+        'capabilities', 'devices', 'connections', 'logs', 'interfaces', 'health', 'rules', 'snapshot',
+        'block-ip', 'block-device', 'block-egress-port', 'block-egress-proto', 'unblock-ip', 'unblock-device',
+        'apply-draft', 'rollback-draft', 'pfchat-managed-list', 'pfchat-managed-cleanup', 'quick-egress-block', 'quick-egress-unblock'
+    }
+    ntop_commands = {'ntop-capabilities', 'ntop-hosts', 'ntop-host'}
+
+    if args.command in pf_commands:
         host, api_key, verify_ssl = load_config()
         client = PfSenseClient(host=host, api_key=api_key, verify_ssl=verify_ssl)
     else:
         client = None
+
+    if args.command in ntop_commands:
+        base_url, username, password, ntop_verify_ssl = load_ntopng_config()
+        ntop_client = NtopngClient(base_url=base_url, username=username, password=password, verify_ssl=ntop_verify_ssl)
+    else:
+        ntop_client = None
 
     if args.command == "capabilities":
         data = client.get_capabilities()
@@ -840,6 +1036,25 @@ def main() -> int:
     elif args.command == "rules":
         rules = client.get_firewall_rules(filters=base_filters or None)
         data = {"total_rules": len(rules), "rules": rules, "applied_filters": base_filters}
+    elif args.command == 'ntop-capabilities':
+        data = ntop_client.get_capabilities()
+    elif args.command == 'ntop-hosts':
+        hosts = ntop_client.get_active_hosts(ifid=args.ifid, per_page=args.limit)
+        rows = hosts.get('data', []) if isinstance(hosts, dict) else []
+        if args.host:
+            host_filter = args.host.lower()
+            rows = [row for row in rows if host_filter in str(row.get('ip', '')).lower() or host_filter in str(row.get('name', '')).lower()]
+        data = {
+            'ifid': args.ifid,
+            'total_active_hosts': len(rows),
+            'hosts': rows,
+            'applied_filters': {'host': args.host},
+        }
+    elif args.command == 'ntop-host':
+        target_host = args.host or args.target
+        if not target_host:
+            raise SystemExit('Missing --host or --target for ntop-host.')
+        data = ntop_client.summarize_host(host=target_host, ifid=args.ifid)
     elif args.command in {"block-ip", "block-device"}:
         data = save_draft(build_block_draft(client, args.target or '', args.command))
     elif args.command == 'block-egress-port':
@@ -868,6 +1083,10 @@ def main() -> int:
         data = list_managed_objects(client)
     elif args.command == 'pfchat-managed-cleanup':
         data = cleanup_managed_objects(client, confirm=args.confirm)
+    elif args.command == 'quick-egress-block':
+        data = quick_egress_block(client, args.target or '', args.proto, port=args.port)
+    elif args.command == 'quick-egress-unblock':
+        data = quick_egress_unblock(client, args.target or '', args.proto, port=args.port)
     else:
         data = client.get_snapshot(limit=args.limit)
 

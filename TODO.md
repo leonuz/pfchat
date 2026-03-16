@@ -25,7 +25,9 @@ Project backlog, organized by priority.
 - [x] Improve snapshot output to summarize findings more compactly
 - [x] Add real investigation examples under `references/`
 - [ ] Evaluate support for multiple LAN/VLAN segments in device inventory
-- [ ] Extend host-specific egress blocking beyond the current single-port draft/apply/rollback path (multiple ports, richer protocol handling, target-aware unblock by port)
+- [ ] Extend ntopng integration beyond active hosts/host summary into historical flows, alerts, and top applications
+- [x] Add immediate `quick-egress-block` / `quick-egress-unblock` operations for host-specific TCP/UDP port and ICMP toggles using temporary floating+quick rules plus state cleanup
+- [ ] Extend host-specific egress blocking beyond the current single-port draft/apply/rollback path (multiple ports, richer protocol handling, target-aware unblock by port, and cleaner promotion from quick rules to permanent policy)
 - [x] Add stricter `.env` validation
 
 ## Low priority
