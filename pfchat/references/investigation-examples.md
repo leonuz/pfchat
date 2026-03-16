@@ -144,7 +144,44 @@ This is useful to quickly inspect:
 - QUIC over UDP 443
 - heavy streaming/app traffic patterns
 
-## 9. Safely block and then roll back a lab device
+## 9. Show ntopng active hosts
+
+Use:
+
+```bash
+python3 pfchat/scripts/pfchat_query.py ntop-hosts --ifid 0 --limit 20
+```
+
+Natural-language equivalents:
+- "show ntopng active hosts"
+- "what hosts are active on ntopng right now?"
+- "show ntopng active hosts on interface 0"
+
+Look for:
+- first/last seen timestamps
+- bytes and flow counts
+- whether the host is local, expected, or unusual
+
+## 10. Show ntopng top talkers
+
+Use:
+
+```bash
+python3 pfchat/scripts/pfchat_query.py ntop-top-talkers --ifid 0 --direction local
+python3 pfchat/scripts/pfchat_query.py ntop-top-talkers --ifid 0 --direction remote
+```
+
+Natural-language equivalents:
+- "show ntopng top talkers"
+- "show ntopng top local talkers"
+- "show ntopng top remote talkers"
+
+Look for:
+- the noisiest current hosts
+- whether top talkers are expected local clients or external systems
+- large byte deltas that deserve host-level follow-up with `ntop-host`
+
+## 11. Safely block and then roll back a lab device
 
 Draft first:
 

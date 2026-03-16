@@ -116,6 +116,12 @@ class PyApiInterface:
     def get_top_remote_talkers(self) -> Any:
         return self.backend._request(self.backend.rest_pro_v2_url + '/get/interface/top/remote/talkers.lua', {'ifid': self.ifid})
 
+    def get_top_local_talkers_v1(self) -> Any:
+        return self.backend._request('/lua/pro/rest/v1/get/interface/top/local/talkers.lua', {'ifid': self.ifid})
+
+    def get_top_remote_talkers_v1(self) -> Any:
+        return self.backend._request('/lua/pro/rest/v1/get/interface/top/remote/talkers.lua', {'ifid': self.ifid})
+
 
 class PyApiHistorical:
     def __init__(self, backend: NtopngPyApiBackend, ifid: int):

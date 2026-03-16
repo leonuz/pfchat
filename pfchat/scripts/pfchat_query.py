@@ -956,7 +956,7 @@ def main() -> int:
         default='snapshot',
         choices=[
             "capabilities", "devices", "connections", "logs", "interfaces", "health", "rules", "snapshot",
-            "ntop-capabilities", "ntop-hosts", "ntop-host",
+            "ntop-capabilities", "ntop-hosts", "ntop-host", "ntop-top-talkers",
             "block-ip", "block-device", "block-egress-port", "block-egress-proto", "unblock-ip", "unblock-device", "draft-show", "draft-list", "apply-draft", "rollback-draft", "pfchat-managed-list", "pfchat-managed-cleanup",
             "quick-egress-block", "quick-egress-unblock"
         ],
@@ -976,6 +976,7 @@ def main() -> int:
     parser.add_argument("--draft-id", help="Saved draft identifier for draft-show or apply-draft")
     parser.add_argument("--confirm", action="store_true", help="Explicitly confirm a state-changing apply-draft execution")
     parser.add_argument("--ifid", type=int, default=0, help="ntopng interface id for ntop-* commands")
+    parser.add_argument("--direction", choices=['local', 'remote'], default='local', help="Direction for ntop-top-talkers")
     args = parser.parse_args()
     args = apply_once_preset(args)
 
@@ -985,7 +986,7 @@ def main() -> int:
         'block-ip', 'block-device', 'block-egress-port', 'block-egress-proto', 'unblock-ip', 'unblock-device',
         'apply-draft', 'rollback-draft', 'pfchat-managed-list', 'pfchat-managed-cleanup', 'quick-egress-block', 'quick-egress-unblock'
     }
-    ntop_commands = {'ntop-capabilities', 'ntop-hosts', 'ntop-host'}
+    ntop_commands = {'ntop-capabilities', 'ntop-hosts', 'ntop-host', 'ntop-top-talkers'}
 
     if args.command in pf_commands:
         host, api_key, verify_ssl = load_config()
@@ -1052,6 +1053,8 @@ def main() -> int:
         if not target_host:
             raise SystemExit('Missing --host or --target for ntop-host.')
         data = ntop_adapter.get_host_summary(target=target_host, ifid=args.ifid)
+    elif args.command == 'ntop-top-talkers':
+        data = ntop_adapter.get_top_talkers(ifid=args.ifid, direction=args.direction)
     elif args.command in {"block-ip", "block-device"}:
         data = save_draft(build_block_draft(client, args.target or '', args.command))
     elif args.command == 'block-egress-port':

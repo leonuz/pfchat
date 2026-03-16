@@ -124,6 +124,46 @@ class NtopngAdapterTests(unittest.TestCase):
         self.assertTrue(caps['capabilities']['alerts'])
         self.assertTrue(caps['capabilities']['historical_flows'])
 
+    def test_get_top_talkers_normalizes_rows(self) -> None:
+        class Interface:
+            def get_top_local_talkers(self):
+                return [
+                    {'host': '192.168.0.95', 'bytes': 12345, 'flows': 4, 'country': 'US', 'vlan': 0}
+                ]
+        class NtopClient:
+            def get_interface(self, ifid=0):
+                return Interface()
+
+        adapter = NtopngAdapter(NtopClient())
+        data = adapter.get_top_talkers(ifid=0, direction='local')
+        self.assertEqual(data['total_talkers'], 1)
+        self.assertEqual(data['talkers'][0]['host'], '192.168.0.95')
+        self.assertEqual(data['talkers'][0]['bytes'], 12345)
+        self.assertEqual(data['source'], 'ntopng_top_talkers_endpoint')
+
+    def test_get_top_talkers_falls_back_to_active_hosts(self) -> None:
+        class Interface:
+            def get_top_local_talkers(self):
+                raise RuntimeError('403 pro_only')
+            def get_top_local_talkers_v1(self):
+                raise RuntimeError('403 pro_only')
+            def get_active_hosts_paginated(self, current_page, per_page):
+                return {
+                    'data': [
+                        {'ip': 'a', 'name': 'a', 'vlan': 0, 'bytes': {'total': 10}, 'num_flows': {'total': 1}},
+                        {'ip': 'b', 'name': 'b', 'vlan': 0, 'bytes': {'total': 50}, 'num_flows': {'total': 2}},
+                    ]
+                }
+        class NtopClient:
+            def get_interface(self, ifid=0):
+                return Interface()
+
+        adapter = NtopngAdapter(NtopClient())
+        data = adapter.get_top_talkers(ifid=0, direction='local')
+        self.assertEqual(data['source'], 'active_hosts_fallback')
+        self.assertEqual(data['talkers'][0]['host'], 'b')
+        self.assertIn('fallback', data['note'].lower())
+
 
 if __name__ == '__main__':
     unittest.main()

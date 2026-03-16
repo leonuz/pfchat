@@ -21,7 +21,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Added a lightweight Python-API-style ntopng backend in `pfchat/scripts/ntopng_pyapi_backend.py` that follows the official object model (`Ntopng` / `Interface` / `Historical`) while keeping PfChat control over SSL verification and response parsing.
-- Wired PfChat ntopng commands (`ntop-capabilities`, `ntop-hosts`, `ntop-host`) to the new backend through the adapter layer.
+- Wired PfChat ntopng commands (`ntop-capabilities`, `ntop-hosts`, `ntop-host`, `ntop-top-talkers`) to the new backend through the adapter layer.
 
 ### Validated
 

@@ -26,6 +26,7 @@ It is model-agnostic: the skill fetches live data from pfSense and lets the curr
 - Cache the OpenAPI schema locally to reduce repeated fetches
 - Query ntopng active hosts and host details through its REST API
 - Normalize ntopng host output into PfChat-native JSON with capability probing and host identity resolution
+- Derive top talkers from ntopng Pro endpoints when available, with active-host byte-ranking fallback when those endpoints are unavailable
 
 ## Prerequisites on pfSense
 
@@ -137,6 +138,7 @@ python3 pfchat/scripts/pfchat_query.py --once blocked
 python3 pfchat/scripts/pfchat_query.py ntop-capabilities
 python3 pfchat/scripts/pfchat_query.py ntop-hosts --ifid 0 --limit 50
 python3 pfchat/scripts/pfchat_query.py ntop-host --host 192.168.0.95 --ifid 0
+python3 pfchat/scripts/pfchat_query.py ntop-top-talkers --ifid 0 --direction local
 ```
 
 ### 3. Use from OpenClaw
@@ -148,6 +150,23 @@ Typical prompts:
 - "what is iphoneLeo doing right now?"
 - "what is my WAN address?"
 - "show me firewall rules related to OpenVPN"
+- "show ntopng active hosts"
+- "what does ntopng know about 192.168.0.160?"
+- "show ntopng top talkers"
+
+### Recommended natural-language prompts for ntopng
+
+Use phrasings like these when you want PfChat to pivot into ntopng-backed queries:
+
+- "show ntopng capabilities"
+- "is ntopng working?"
+- "show ntopng active hosts"
+- "show ntopng active hosts on interface 0"
+- "what does ntopng know about ferpad.uzc?"
+- "check ntopng host 192.168.0.160"
+- "show ntopng top talkers"
+- "show ntopng top local talkers on interface 0"
+- "show ntopng top remote talkers"
 
 ## Example output
 

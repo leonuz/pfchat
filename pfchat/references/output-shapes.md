@@ -294,6 +294,33 @@ Top-level shape:
 }
 ```
 
+## `ntop-top-talkers`
+
+Purpose:
+- show the busiest current talkers seen by ntopng
+- support local or remote direction when the underlying ntopng endpoints expose both
+
+Top-level shape:
+
+```json
+{
+  "ifid": 0,
+  "direction": "local",
+  "source": "ntopng_top_talkers_endpoint",
+  "total_talkers": 3,
+  "talkers": [
+    {
+      "host": "192.168.0.95",
+      "ip": "192.168.0.95",
+      "bytes": 123456,
+      "flows": 4,
+      "country": "US",
+      "vlan": 0
+    }
+  ]
+}
+```
+
 ## `rules`
 
 Purpose:

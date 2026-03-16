@@ -204,6 +204,60 @@ class NtopngAdapter:
 
         raise RuntimeError(f'Unable to resolve host identity for {target!r}')
 
+    def get_top_talkers(self, ifid: int = 0, direction: str = 'local') -> dict[str, Any]:
+        iface = self.ntop_client.get_interface(ifid) if hasattr(self.ntop_client, 'get_interface') else None
+        if iface is None:
+            raise RuntimeError('ntopng top talkers requires an interface-capable backend')
+
+        rows = []
+        source = 'ntopng_top_talkers_endpoint'
+        endpoint_error = None
+        try:
+            if direction == 'remote':
+                try:
+                    rows = iface.get_top_remote_talkers()
+                except Exception:
+                    rows = iface.get_top_remote_talkers_v1()
+            else:
+                try:
+                    rows = iface.get_top_local_talkers()
+                except Exception:
+                    rows = iface.get_top_local_talkers_v1()
+        except Exception as exc:
+            endpoint_error = str(exc)
+            source = 'active_hosts_fallback'
+            host_rows = self.get_active_hosts(ifid=ifid, limit=200).get('hosts', [])
+            rows = sorted(
+                host_rows,
+                key=lambda row: int(((row.get('bytes') or {}).get('total') or 0)),
+                reverse=True,
+            )[:20]
+
+        normalized = []
+        for row in rows if isinstance(rows, list) else []:
+            if not isinstance(row, dict):
+                continue
+            normalized.append({
+                'host': row.get('host') or row.get('ip') or row.get('hostname') or row.get('name') or row.get('label'),
+                'ip': row.get('ip') or row.get('host'),
+                'bytes': row.get('bytes') if isinstance(row.get('bytes'), (int, float)) else (row.get('bytes') or {}).get('total', row.get('traffic') or row.get('value')),
+                'flows': row.get('flows') if isinstance(row.get('flows'), (int, float)) else (row.get('flows') or {}).get('total', row.get('num_flows')),
+                'country': row.get('country'),
+                'vlan': row.get('vlan'),
+                'raw': row,
+            })
+        result = {
+            'ifid': ifid,
+            'direction': direction,
+            'source': source,
+            'total_talkers': len(normalized),
+            'talkers': normalized,
+        }
+        if endpoint_error:
+            result['note'] = 'Top talkers endpoint unavailable; using active-host byte ranking fallback.'
+            result['endpoint_error'] = endpoint_error
+        return result
+
     def get_host_summary(self, target: str, ifid: int = 0) -> dict[str, Any]:
         identity = self.resolve_host_identity(target=target, ifid=ifid)
         host_param = identity.get('resolved_ip') or target
