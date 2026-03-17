@@ -4,6 +4,17 @@ Pendientes del proyecto, organizados por prioridad.
 
 ## Alta prioridad
 
+### Arquitectura de integración con ntopng
+
+- [x] Refactorizar el soporte de ntopng a un diseño de dos capas: cliente de transporte/auth de bajo nivel más un adapter de normalización/agregación
+- [x] Añadir detección de capacidades de ntopng que distinga REST v1/v2, alerts, timeseries y soporte de historical flows en vez de asumir una instalación uniforme
+- [x] Añadir resolución compartida de identidad de host entre entradas de pfSense + ntopng (hostname, FQDN, IP, alias y host key con VLAN)
+- [x] Mantener que los comandos de ntopng devuelvan JSON normalizado nativo de PfChat en vez de exponer respuestas crudas específicas del endpoint
+- [x] Decidir reemplazar la ruta actual de transporte custom de ntopng por el backend ligero estilo Python API para consultas live
+- [ ] Investigar si la respuesta malformada de `connect/test.lua` es un bug específico de versión de ntopng o una rareza de proxy que convenga tratar más generalmente
+- [x] Convertir epochs normalizados de alertas ntopng a hora del este (ET) en resúmenes conversacionales de alto nivel por defecto
+- [ ] Añadir render ET/hora local a otras superficies de resumen de ntopng como top talkers y active-host summaries cuando se muestren timestamps
+
 - [x] Añadir acciones administrativas seguras de firewall para bloquear una IP/dispositivo usando flujo `draft -> preview -> apply -> audit`
 - [x] Fortalecer rollback usando identificadores nativos de objetos pfSense cuando existan en lugar de heurísticas por descripción
 - [x] Añadir validación real en un lab controlado antes de recomendar uso en producción
@@ -27,6 +38,10 @@ Pendientes del proyecto, organizados por prioridad.
 - [ ] Evaluar soporte para múltiples LAN/VLAN en inventario de dispositivos
 - [ ] Extender el bloqueo de salida por host más allá del flujo actual single-port draft/apply/rollback (múltiples puertos, protocolos más ricos y unblock por target+puerto)
 - [x] Añadir validación más estricta del archivo `.env`
+- [x] Añadir soporte para top-talkers de ntopng basado en salida normalizada del adapter en vez de passthrough crudo del endpoint
+- [x] Añadir soporte de alertas ntopng (globales + por host) con normalización de severidad
+- [x] Añadir resúmenes de aplicaciones/protocolos de host ntopng (L7) mediante un modelo de salida estable de PfChat
+- [x] Añadir parsing/normalización más rico para registros de alert-list y así resaltar hosts, severidades y familias de alertas sin exponer solo la estructura cruda de ntopng
 
 ## Prioridad baja
 

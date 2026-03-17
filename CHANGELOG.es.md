@@ -4,6 +4,34 @@ Todos los cambios relevantes de este proyecto se documentan aquí.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-17
+
+### Añadido
+
+- Integración inicial con ntopng usando variables de entorno locales del proyecto para `NTOPNG_BASE_URL`, `NTOPNG_USERNAME`, `NTOPNG_PASSWORD`, `NTOPNG_AUTH_TOKEN` y `NTOPNG_VERIFY_SSL`.
+- Primera tanda de comandos ntopng: `ntop-capabilities`, `ntop-hosts` y `ntop-host`.
+- `pfchat/scripts/ntopng_client.py` reutilizable más cobertura unitaria para la capa inicial de transporte de ntopng.
+- Documentación de formas de salida y ejemplos de invocación para comandos soportados por ntopng.
+- Backend ligero de ntopng estilo Python API en `pfchat/scripts/ntopng_pyapi_backend.py`, siguiendo el modelo oficial útil (`Ntopng` / `Interface` / `Historical`) pero manteniendo control sobre SSL y parseo de respuestas.
+- Conexión de los comandos ntopng (`ntop-capabilities`, `ntop-hosts`, `ntop-host`, `ntop-top-talkers`, `ntop-alerts`, `ntop-host-apps`) al backend nuevo a través del adapter.
+- Degradación limpia para features de ntopng no disponibles o lentas en esta instancia: top talkers cae a ranking por bytes de active hosts y `ntop-alerts` prefiere endpoints `alert/list` sobre el resumen lento `alert/top`.
+- Registros de alertas flow/host normalizados y bloque `summary` de alertas para que los resultados de ntopng sean más útiles conversacionalmente.
+- Render de hora del este (ET) para timestamps de alertas y resúmenes de host en ntopng.
+- Supresión de warnings ruidosos de urllib3 cuando la verificación SSL de ntopng se deshabilita de forma intencional.
+- Mejoras en el filtrado del resumen diario usando detección real de IP privada en vez de un prefijo amplio `172.*`.
+- Soporte `delete_firewall_state()` en `pfsense_client.py` y cobertura de tests para detectar capacidad de borrado de estados.
+
+### Cambiado
+
+- El manejo de comandos ntopng ahora pasa por una capa adapter que normaliza la salida de hosts y la resolución compartida de identidad en vez de devolver payloads crudos específicos de cada endpoint.
+- El transporte ntopng ahora falla de forma limpia cuando el appliance devuelve la página HTML de login, guiando al operador hacia auth HTTP API o token en vez de un traceback de JSON parse.
+
+### Validado
+
+- Verificado que el paquete oficial de Python API de ntopng puede instalarse e importarse en un virtualenv local de este host.
+- Verificado que el self-test de la Python API oficial sigue fallando contra esta instancia de ntopng porque `connect/test.lua` devuelve una respuesta HTTP completa embebida dentro del body, rompiendo el parseo JSON normal.
+- Verificado que la auth directa con `curl` funciona y que el backend ligero puede recuperar datos live de ntopng (`connect/test`, interfaces, hosts activos, interface stats, L7 stats, alert lists, host apps y host summaries) saneando el body malformado de `connect/test.lua` antes de parsear JSON.
+
 ## [0.2.0] - 2026-03-14
 
 ### Añadido
@@ -26,20 +54,6 @@ Todos los cambios relevantes de este proyecto se documentan aquí.
 
 ### Añadido
 
-- Workflows preview-only `block-ip` y `block-device` que resuelven targets, proponen metadata de alias/regla, guardan estado local del draft y reportan soporte del schema sin aplicar cambios al firewall
-- Persistencia local de drafts y auditoría con `draft-list`, `draft-show` y `apply-draft`
-- Ruta confirmada `apply-draft --confirm` que escribe alias + regla + firewall apply cuando el schema vivo confirma los endpoints requeridos
-- Idempotencia del draft y base de rollback con `rollback-draft`, metadata de rollback guardada y soporte de rutas delete/apply
-- Cobertura de integración mockeada para el flujo administrativo completo de apply/rollback
-- Validación real en pfSense para block/apply/rollback contra un target de laboratorio controlado, más rollback por IDs de objetos pfSense
-- Operaciones de objetos gestionados con `pfchat-managed-list` y `pfchat-managed-cleanup` para aliases y reglas creados por PfChat
-- Flujos de desbloqueo por target con `unblock-ip` y `unblock-device` apoyados en discovery de objetos gestionados
-- Soporte draft/apply para bloqueos de puerto de salida por host como `block-egress-port --target sniperhack --port 80 --proto tcp`
-- Validación real en pfSense de block/apply/rollback para un bloqueo de salida específico de `sniperhack` sobre `tcp/80`
-- Drafts de salida por host con capacidad ICMP vía `block-egress-proto --target <host> --proto icmp`
-- Validación real en pfSense de block/apply/rollback para salida ICMP de `sniperhack`
-- Las reglas de bloqueo para un solo host ahora usan la IP literal en el payload `source` de pfSense en vez del nombre del alias generado
-- Convención de documentos orientada a GitHub: `README.md`, `TODO.md` y `CHANGELOG.md` quedan como originales en inglés, y las variantes en español pasan a `README.es.md`, `TODO.es.md` y `CHANGELOG.es.md`
 - Documento `TELEGRAM.md` con el flujo recomendado para usar PfChat a través de OpenClaw en Telegram
 - Documentación del caso de uso de resumen diario por email mediante OpenClaw + Resend
 - Script `pfchat/scripts/send_daily_summary.py` para generar y enviar el resumen diario por correo
@@ -48,19 +62,6 @@ Todos los cambios relevantes de este proyecto se documentan aquí.
 - Integración de hallazgos upstream del proyecto pfrest y del schema OpenAPI real expuesto por la instancia local
 - Descubrimiento automático de capacidades soportadas desde `/api/v2/schema/openapi`
 - Soporte inicial para filtros de consulta en `connections` y `rules`
-- Filtros prácticos para `connections` y `logs` (`--host`, `--port`, `--interface`, `--contains`, `--action`)
-- `references/output-shapes.md` documentando la forma del JSON devuelto por cada comando
-- `references/investigation-examples.md` con workflows concretos para WAN, tráfico bloqueado, top talkers y revisión de reglas
-- Cache persistente local del OpenAPI schema para reducir fetches repetidos de descubrimiento
-- Suite inicial de `unittest` para `pfsense_client.py` y `pfchat_query.py`
-- Validación más estricta del `.env` para host, API key y settings booleanos de SSL
-- Sección compacta `summary` dentro del snapshot para WAN, gateways, top devices, top flows, conteo de bloqueos y highlights
-- Pruebas de integración mockeadas para inventario de dispositivos y snapshot sin requerir un pfSense vivo
-- Presets de automatización con `--once` y vistas reducidas con `--view` para workflows compactos
-- Mejor inferencia degradada de dispositivos desde firewall states, incluyendo interfaces, peer counts y pistas de confianza
-- Compatibilidad más amplia de endpoints con variantes singular/plural como `firewall/state`, `firewall/rule`, `interfaces` e `interface`
-- Fallbacks conservadores adicionales para ARP, leases DHCP, estado del sistema y gateways basados en patrones upstream/schema
-- Ampliadas las notas de variantes de endpoints desde el schema en vivo, incluyendo familias singular/plural, status/config y service/status
 - Cobertura explícita en la skill para preguntas sobre dirección WAN / IP pública del firewall, también en español
 - Fallback de configuración al archivo `pfchat/.env` basado en la ruta del script, para invocaciones desde otros canales/contextos
 - Compatibilidad real con una instalación de pfSense validada en este entorno
@@ -80,26 +81,9 @@ Todos los cambios relevantes de este proyecto se documentan aquí.
 
 - Primera versión de la skill `PfChat` para OpenClaw
 - Cliente reutilizable de pfSense REST API en `pfchat/scripts/pfsense_client.py`
-- CLI auxiliar `pfchat/scripts/pfchat_query.py`
-- Soporte para consultas en vivo de:
-  - dispositivos conectados
-  - conexiones activas
-  - logs recientes del firewall
-  - interfaces
-  - salud del sistema y gateways
-  - reglas del firewall
-  - snapshot combinado
+- CLI auxiliar en `pfchat/scripts/pfchat_query.py`
+- Soporte live para dispositivos conectados, conexiones activas, logs recientes del firewall, interfaces, salud del sistema y gateways, reglas del firewall y snapshots combinados
 - Referencias de endpoints y patrones de investigación en `pfchat/references/`
 - Artefacto empaquetado `dist/pfchat.skill`
 - Estructura de repositorio lista para GitHub
 - Documentación bilingüe inicial
-
-### Cambiado
-
-- El proyecto original fue adaptado para OpenClaw
-- El workflow quedó agnóstico al modelo y ya no depende de un SDK de proveedor específico para el flujo principal
-
-### Notas
-
-- El foco de esta versión es el workflow live/API
-- El análisis offline de logs no está incluido en esta skill

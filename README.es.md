@@ -134,6 +134,30 @@ Prompts típicos:
 - "qué está haciendo iphoneLeo ahora mismo"
 - "cuál es mi dirección WAN"
 - "muéstrame reglas de firewall relacionadas con OpenVPN"
+- "muéstrame hosts activos en ntopng"
+- "qué sabe ntopng sobre 192.168.0.160"
+- "muéstrame los top talkers de ntopng"
+- "muéstrame alertas de ntopng de las últimas 24 horas"
+- "qué aplicaciones está usando ferpad.uzc en ntopng"
+
+## Integración con ntopng
+
+PfChat también puede consultar ntopng para complementar la visibilidad de pfSense.
+
+Capacidades actualmente soportadas:
+- `ntop-capabilities`
+- `ntop-hosts`
+- `ntop-host`
+- `ntop-top-talkers`
+- `ntop-alerts`
+- `ntop-host-apps`
+
+Notas importantes:
+- PfChat usa un backend ligero estilo Python API para ntopng, con fallbacks prácticos para esta instalación real.
+- Si un endpoint de `top talkers` es Pro-only, PfChat cae a un ranking por bytes de `active hosts`.
+- Las alertas de ntopng prefieren endpoints `alert/list`, que resultaron más confiables aquí que `alert/top`.
+- Los timestamps relevantes de alertas y resúmenes de host se renderizan en hora del este (ET).
+- Si `NTOPNG_VERIFY_SSL=false`, PfChat suprime warnings ruidosos de urllib3 para mantener la salida limpia.
 
 ## Ejemplo de salida
 
