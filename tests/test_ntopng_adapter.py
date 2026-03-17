@@ -187,6 +187,8 @@ class NtopngAdapterTests(unittest.TestCase):
         self.assertEqual(data['flow_alerts']['records'][0]['host'], '192.168.0.95')
         self.assertEqual(data['host_alerts']['records'][0]['host'], '192.168.0.95')
         self.assertEqual(data['generic_alerts'][0]['family'], 'flow')
+        self.assertEqual(data['normalized_flow_alerts'][0]['client'], None)
+        self.assertEqual(data['summary']['total_flow_records'], 1)
 
     def test_get_alerts_handles_list_errors_cleanly(self) -> None:
         class Historical:

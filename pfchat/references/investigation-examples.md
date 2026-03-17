@@ -193,11 +193,14 @@ python3 pfchat/scripts/pfchat_query.py ntop-alerts --ifid 0 --hours 24 --host 19
 Natural-language equivalents:
 - "show ntopng alerts from the last 24 hours"
 - "show ntopng alerts for 192.168.0.95"
+- "show me suspicious ntop alerts"
+- "what host is generating the most alerts?"
 
 Look for:
 - severity counters
 - alert type counters
 - whether one host dominates the alert sample
+- top alert names and top affected hosts from the normalized summary block
 
 ## 12. Show ntopng applications for one host
 

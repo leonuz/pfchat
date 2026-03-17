@@ -171,6 +171,8 @@ Use phrasings like these when you want PfChat to pivot into ntopng-backed querie
 - "show ntopng top remote talkers"
 - "show ntopng alerts from the last 24 hours"
 - "show ntopng alerts for 192.168.0.95"
+- "show me suspicious ntop alerts"
+- "what host is generating the most alerts?"
 - "what applications is 192.168.0.95 using in ntopng?"
 - "show ntopng apps for ferpad.uzc"
 

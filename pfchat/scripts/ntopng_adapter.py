@@ -12,6 +12,14 @@ from pfsense_client import PfSenseClient
 class NtopngAdapter:
     """Normalize ntopng responses into stable PfChat-native shapes."""
 
+    SEVERITY_MAP = {
+        '1': 'info',
+        '2': 'notice',
+        '3': 'warning',
+        '4': 'warning',
+        '5': 'critical',
+    }
+
     def __init__(self, ntop_client: object, pfsense_client: PfSenseClient | None = None):
         self.ntop_client = ntop_client
         self.pfsense_client = pfsense_client
@@ -204,6 +212,80 @@ class NtopngAdapter:
 
         raise RuntimeError(f'Unable to resolve host identity for {target!r}')
 
+    @classmethod
+    def _normalize_severity_value(cls, value: Any) -> str | None:
+        if value is None:
+            return None
+        return cls.SEVERITY_MAP.get(str(value), str(value))
+
+    @classmethod
+    def _normalize_flow_alert_record(cls, row: dict[str, Any]) -> dict[str, Any]:
+        score = row.get('score', {}) if isinstance(row.get('score'), dict) else {}
+        flow = row.get('flow', {}) if isinstance(row.get('flow'), dict) else {}
+        cli_ip = row.get('cli_ip', {}) if isinstance(row.get('cli_ip'), dict) else flow.get('cli_ip', {}) if isinstance(flow.get('cli_ip'), dict) else {}
+        srv_ip = row.get('srv_ip', {}) if isinstance(row.get('srv_ip'), dict) else flow.get('srv_ip', {}) if isinstance(flow.get('srv_ip'), dict) else {}
+        msg = row.get('msg', {}) if isinstance(row.get('msg'), dict) else {}
+        tstamp = row.get('tstamp', {}) if isinstance(row.get('tstamp'), dict) else {}
+        return {
+            'family': 'flow',
+            'alert_name': msg.get('fullname') or msg.get('name') or row.get('alert_name'),
+            'severity': cls._normalize_severity_value((row.get('severity') or {}).get('value') if isinstance(row.get('severity'), dict) else row.get('severity')),
+            'score': score.get('value') or row.get('score'),
+            'time_epoch': tstamp.get('value') or row.get('tstamp'),
+            'client': cli_ip.get('ip') or cli_ip.get('value'),
+            'client_name': cli_ip.get('name') or cli_ip.get('label'),
+            'server': srv_ip.get('ip') or srv_ip.get('value'),
+            'server_name': srv_ip.get('name') or srv_ip.get('label'),
+            'l7': ((row.get('l7_proto') or {}).get('label') if isinstance(row.get('l7_proto'), dict) else row.get('l7_proto')),
+            'bytes': ((row.get('total_bytes') or {}).get('total_bytes') if isinstance(row.get('total_bytes'), dict) else None),
+            'description': msg.get('description'),
+            'raw': row,
+        }
+
+    @classmethod
+    def _normalize_host_alert_record(cls, row: dict[str, Any]) -> dict[str, Any]:
+        score = row.get('score', {}) if isinstance(row.get('score'), dict) else {}
+        ip_block = row.get('ip', {}) if isinstance(row.get('ip'), dict) else {}
+        msg = row.get('msg', {}) if isinstance(row.get('msg'), dict) else {}
+        tstamp = row.get('tstamp', {}) if isinstance(row.get('tstamp'), dict) else {}
+        sev = row.get('severity', {}) if isinstance(row.get('severity'), dict) else {}
+        return {
+            'family': 'host',
+            'alert_name': row.get('alert_name') or msg.get('fullname') or msg.get('name'),
+            'severity': cls._normalize_severity_value(sev.get('value') or row.get('severity')),
+            'score': score.get('value') or row.get('score'),
+            'time_epoch': tstamp.get('value') or row.get('tstamp'),
+            'host': ip_block.get('value') or ip_block.get('label') or row.get('ip'),
+            'host_name': ip_block.get('label') or ip_block.get('shown_label'),
+            'description': msg.get('description') or row.get('description'),
+            'raw': row,
+        }
+
+    @staticmethod
+    def _build_alert_summary(flow_records: list[dict[str, Any]], host_records: list[dict[str, Any]]) -> dict[str, Any]:
+        by_name: dict[str, int] = {}
+        by_host: dict[str, int] = {}
+        for row in flow_records:
+            name = row.get('alert_name') or 'Unknown'
+            by_name[name] = by_name.get(name, 0) + 1
+            host = row.get('client_name') or row.get('client')
+            if host:
+                by_host[str(host)] = by_host.get(str(host), 0) + 1
+        for row in host_records:
+            name = row.get('alert_name') or 'Unknown'
+            by_name[name] = by_name.get(name, 0) + 1
+            host = row.get('host_name') or row.get('host')
+            if host:
+                by_host[str(host)] = by_host.get(str(host), 0) + 1
+        top_alert_names = sorted(by_name.items(), key=lambda item: item[1], reverse=True)[:10]
+        top_hosts = sorted(by_host.items(), key=lambda item: item[1], reverse=True)[:10]
+        return {
+            'top_alert_names': [{'name': name, 'count': count} for name, count in top_alert_names],
+            'top_hosts': [{'host': host, 'count': count} for host, count in top_hosts],
+            'total_flow_records': len(flow_records),
+            'total_host_records': len(host_records),
+        }
+
     def get_alerts(self, ifid: int = 0, hours: int = 24, host: str | None = None) -> dict[str, Any]:
         hist = self.ntop_client.get_historical_interface(ifid) if hasattr(self.ntop_client, 'get_historical_interface') else None
         if hist is None:
@@ -216,17 +298,21 @@ class NtopngAdapter:
         flow_alerts = None
         host_alerts = None
         generic_alerts = None
+        normalized_flow_alerts: list[dict[str, Any]] = []
+        normalized_host_alerts: list[dict[str, Any]] = []
         notes: list[str] = []
         errors: dict[str, str] = {}
 
         try:
             flow_alerts = hist.get_flow_alert_list(start, now, length=20, host=host)
+            normalized_flow_alerts = [self._normalize_flow_alert_record(r) for r in flow_alerts.get('records', []) if isinstance(r, dict)] if isinstance(flow_alerts, dict) else []
         except Exception as exc:
             errors['flow_alerts'] = str(exc)
             notes.append('flow alert list unavailable')
 
         try:
             host_alerts = hist.get_host_alert_list(start, now, length=20, host=host)
+            normalized_host_alerts = [self._normalize_host_alert_record(r) for r in host_alerts.get('records', []) if isinstance(r, dict)] if isinstance(host_alerts, dict) else []
         except Exception as exc:
             errors['host_alerts'] = str(exc)
             notes.append('host alert list unavailable')
@@ -249,6 +335,9 @@ class NtopngAdapter:
             'flow_alerts': flow_alerts,
             'host_alerts': host_alerts,
             'generic_alerts': generic_alerts,
+            'normalized_flow_alerts': normalized_flow_alerts,
+            'normalized_host_alerts': normalized_host_alerts,
+            'summary': self._build_alert_summary(normalized_flow_alerts, normalized_host_alerts),
         }
         if notes:
             result['note'] = '; '.join(notes)

@@ -356,7 +356,32 @@ Top-level shape:
       "alert_id": "26",
       "severity": "3"
     }
-  ]
+  ],
+  "normalized_flow_alerts": [
+    {
+      "family": "flow",
+      "alert_name": "Susp. Device Protocol",
+      "severity": "warning",
+      "client": "192.168.0.52",
+      "server": "44.215.143.203"
+    }
+  ],
+  "normalized_host_alerts": [
+    {
+      "family": "host",
+      "alert_name": "Unknown",
+      "severity": "warning",
+      "host": "192.168.0.50"
+    }
+  ],
+  "summary": {
+    "top_alert_names": [
+      {"name": "Unknown", "count": 5}
+    ],
+    "top_hosts": [
+      {"host": "192.168.0.50", "count": 5}
+    ]
+  }
 }
 ```
 
