@@ -139,6 +139,8 @@ python3 pfchat/scripts/pfchat_query.py ntop-capabilities
 python3 pfchat/scripts/pfchat_query.py ntop-hosts --ifid 0 --limit 50
 python3 pfchat/scripts/pfchat_query.py ntop-host --host 192.168.0.95 --ifid 0
 python3 pfchat/scripts/pfchat_query.py ntop-top-talkers --ifid 0 --direction local
+python3 pfchat/scripts/pfchat_query.py ntop-alerts --ifid 0 --hours 24
+python3 pfchat/scripts/pfchat_query.py ntop-host-apps --host 192.168.0.95 --ifid 0
 ```
 
 ### 3. Use from OpenClaw
@@ -167,6 +169,10 @@ Use phrasings like these when you want PfChat to pivot into ntopng-backed querie
 - "show ntopng top talkers"
 - "show ntopng top local talkers on interface 0"
 - "show ntopng top remote talkers"
+- "show ntopng alerts from the last 24 hours"
+- "show ntopng alerts for 192.168.0.95"
+- "what applications is 192.168.0.95 using in ntopng?"
+- "show ntopng apps for ferpad.uzc"
 
 ## Example output
 

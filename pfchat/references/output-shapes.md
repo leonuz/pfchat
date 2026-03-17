@@ -321,6 +321,64 @@ Top-level shape:
 }
 ```
 
+If the ntopng top-talker endpoint is not available (for example Pro-only), PfChat may degrade to:
+- `source: "active_hosts_fallback"`
+- `note: "Top talkers endpoint unavailable; using active-host byte ranking fallback."`
+
+## `ntop-alerts`
+
+Purpose:
+- summarize ntopng alerts over a time window
+- optionally focus on one host
+
+Top-level shape:
+
+```json
+{
+  "ifid": 0,
+  "window_hours": 24,
+  "host_filter": "192.168.0.95",
+  "severity_counters": {
+    "critical": 1
+  },
+  "type_counters": {
+    "dns": 2
+  },
+  "top_alerts": {
+    "rows": []
+  }
+}
+```
+
+## `ntop-host-apps`
+
+Purpose:
+- summarize L7/application visibility for one host through ntopng
+
+Top-level shape:
+
+```json
+{
+  "host": {
+    "input": "192.168.0.95",
+    "resolved_ip": "192.168.0.95",
+    "resolved_hostname": "iphoneLeo",
+    "resolved_vlan": 0
+  },
+  "applications": [
+    {
+      "label": "TLS",
+      "value": 90,
+      "url": "/lua/flows_stats.lua?application=TLS"
+    }
+  ],
+  "total_applications": 1,
+  "resolution": {
+    "confidence": "high"
+  }
+}
+```
+
 ## `rules`
 
 Purpose:

@@ -29,9 +29,9 @@ Project backlog, organized by priority.
 ## Medium priority
 
 - [ ] Add a documented and automatable Telegram summary/alert workflow on top of OpenClaw
-- [ ] Add ntopng top-talkers support backed by normalized adapter output rather than direct raw endpoint passthrough
-- [ ] Add ntopng alerts support (global + per-host) with severity normalization
-- [ ] Add ntopng host application/protocol summaries (L7) through a stable PfChat output model
+- [x] Add ntopng top-talkers support backed by normalized adapter output rather than direct raw endpoint passthrough
+- [x] Add ntopng alerts support (global + per-host) with severity normalization
+- [x] Add ntopng host application/protocol summaries (L7) through a stable PfChat output model
 - [x] Discover more real-world pfSense REST API endpoint variants
 - [x] Add a `--once` mode or automation-oriented presets
 - [x] Improve snapshot output to summarize findings more compactly

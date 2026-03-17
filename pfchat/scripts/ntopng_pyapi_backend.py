@@ -110,6 +110,12 @@ class PyApiInterface:
     def get_host_data(self, host_ip: str) -> dict[str, Any]:
         return self.backend._request(self.backend.rest_v2_url + '/get/host/data.lua', {'ifid': self.ifid, 'host': host_ip})
 
+    def get_host_l7_stats(self, host_ip: str, vlan: int | None = None) -> Any:
+        params: dict[str, Any] = {'ifid': self.ifid, 'host': host_ip, 'breed': True, 'ndpi_category': True}
+        if vlan is not None:
+            params['vlan'] = vlan
+        return self.backend._request(self.backend.rest_v2_url + '/get/host/l7/stats.lua', params)
+
     def get_top_local_talkers(self) -> Any:
         return self.backend._request(self.backend.rest_pro_v2_url + '/get/interface/top/local/talkers.lua', {'ifid': self.ifid})
 

@@ -956,7 +956,7 @@ def main() -> int:
         default='snapshot',
         choices=[
             "capabilities", "devices", "connections", "logs", "interfaces", "health", "rules", "snapshot",
-            "ntop-capabilities", "ntop-hosts", "ntop-host", "ntop-top-talkers",
+            "ntop-capabilities", "ntop-hosts", "ntop-host", "ntop-top-talkers", "ntop-alerts", "ntop-host-apps",
             "block-ip", "block-device", "block-egress-port", "block-egress-proto", "unblock-ip", "unblock-device", "draft-show", "draft-list", "apply-draft", "rollback-draft", "pfchat-managed-list", "pfchat-managed-cleanup",
             "quick-egress-block", "quick-egress-unblock"
         ],
@@ -977,6 +977,7 @@ def main() -> int:
     parser.add_argument("--confirm", action="store_true", help="Explicitly confirm a state-changing apply-draft execution")
     parser.add_argument("--ifid", type=int, default=0, help="ntopng interface id for ntop-* commands")
     parser.add_argument("--direction", choices=['local', 'remote'], default='local', help="Direction for ntop-top-talkers")
+    parser.add_argument("--hours", type=int, default=24, help="Time window in hours for ntop-alerts")
     args = parser.parse_args()
     args = apply_once_preset(args)
 
@@ -986,7 +987,7 @@ def main() -> int:
         'block-ip', 'block-device', 'block-egress-port', 'block-egress-proto', 'unblock-ip', 'unblock-device',
         'apply-draft', 'rollback-draft', 'pfchat-managed-list', 'pfchat-managed-cleanup', 'quick-egress-block', 'quick-egress-unblock'
     }
-    ntop_commands = {'ntop-capabilities', 'ntop-hosts', 'ntop-host', 'ntop-top-talkers'}
+    ntop_commands = {'ntop-capabilities', 'ntop-hosts', 'ntop-host', 'ntop-top-talkers', 'ntop-alerts', 'ntop-host-apps'}
 
     if args.command in pf_commands:
         host, api_key, verify_ssl = load_config()
@@ -1055,6 +1056,13 @@ def main() -> int:
         data = ntop_adapter.get_host_summary(target=target_host, ifid=args.ifid)
     elif args.command == 'ntop-top-talkers':
         data = ntop_adapter.get_top_talkers(ifid=args.ifid, direction=args.direction)
+    elif args.command == 'ntop-alerts':
+        data = ntop_adapter.get_alerts(ifid=args.ifid, hours=args.hours, host=args.host)
+    elif args.command == 'ntop-host-apps':
+        target_host = args.host or args.target
+        if not target_host:
+            raise SystemExit('Missing --host or --target for ntop-host-apps.')
+        data = ntop_adapter.get_host_apps(target=target_host, ifid=args.ifid)
     elif args.command in {"block-ip", "block-device"}:
         data = save_draft(build_block_draft(client, args.target or '', args.command))
     elif args.command == 'block-egress-port':

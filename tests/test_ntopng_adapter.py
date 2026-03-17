@@ -164,6 +164,57 @@ class NtopngAdapterTests(unittest.TestCase):
         self.assertEqual(data['talkers'][0]['host'], 'b')
         self.assertIn('fallback', data['note'].lower())
 
+    def test_get_alerts_aggregates_historical_calls(self) -> None:
+        class Historical:
+            def get_alert_severity_counters(self, epoch_begin, epoch_end):
+                return {'critical': 1}
+            def get_alert_type_counters(self, epoch_begin, epoch_end):
+                return {'dns': 2}
+            def get_alerts_stats(self, epoch_begin, epoch_end, host=None):
+                return {'rows': [{'host': host or 'all'}]}
+        class NtopClient:
+            def get_historical_interface(self, ifid=0):
+                return Historical()
+
+        adapter = NtopngAdapter(NtopClient())
+        data = adapter.get_alerts(ifid=0, hours=24, host='192.168.0.95')
+        self.assertEqual(data['severity_counters']['critical'], 1)
+        self.assertEqual(data['type_counters']['dns'], 2)
+        self.assertEqual(data['top_alerts']['rows'][0]['host'], '192.168.0.95')
+
+    def test_get_alerts_handles_top_alert_timeout(self) -> None:
+        class Historical:
+            def get_alert_severity_counters(self, epoch_begin, epoch_end):
+                return {'critical': 1}
+            def get_alert_type_counters(self, epoch_begin, epoch_end):
+                return {'dns': 2}
+            def get_alerts_stats(self, epoch_begin, epoch_end, host=None):
+                raise RuntimeError('timeout')
+        class NtopClient:
+            def get_historical_interface(self, ifid=0):
+                return Historical()
+
+        adapter = NtopngAdapter(NtopClient())
+        data = adapter.get_alerts(ifid=0, hours=24)
+        self.assertIsNone(data['top_alerts'])
+        self.assertIn('timed out', data['note'])
+
+    def test_get_host_apps_normalizes_l7_stats(self) -> None:
+        class Interface:
+            def get_active_hosts_paginated(self, current_page, per_page):
+                return {'data': [{'ip': '192.168.0.95', 'name': 'iphoneLeo', 'vlan': 0, 'key': '192.168.0.95@0'}]}
+            def get_host_l7_stats(self, host_ip, vlan=None):
+                return [{'label': 'TLS', 'value': 90, 'url': '/lua/flows_stats.lua?application=TLS'}]
+        class NtopClient:
+            def get_interface(self, ifid=0):
+                return Interface()
+
+        adapter = NtopngAdapter(NtopClient())
+        data = adapter.get_host_apps(target='192.168.0.95', ifid=0)
+        self.assertEqual(data['total_applications'], 1)
+        self.assertEqual(data['applications'][0]['label'], 'TLS')
+        self.assertEqual(data['host']['resolved_ip'], '192.168.0.95')
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -204,6 +204,65 @@ class NtopngAdapter:
 
         raise RuntimeError(f'Unable to resolve host identity for {target!r}')
 
+    def get_alerts(self, ifid: int = 0, hours: int = 24, host: str | None = None) -> dict[str, Any]:
+        hist = self.ntop_client.get_historical_interface(ifid) if hasattr(self.ntop_client, 'get_historical_interface') else None
+        if hist is None:
+            raise RuntimeError('ntopng alerts require a historical-capable backend')
+        now = int(__import__('time').time())
+        start = now - max(1, hours) * 3600
+        severity = hist.get_alert_severity_counters(start, now)
+        alert_types = hist.get_alert_type_counters(start, now)
+        top_alerts = None
+        note = None
+        top_alerts_error = None
+        try:
+            top_alerts = hist.get_alerts_stats(start, now, host=host)
+        except Exception as exc:
+            top_alerts_error = str(exc)
+            note = 'Alert counter endpoints worked, but ntopng top-alert summary timed out or was unavailable for this window.'
+        result = {
+            'ifid': ifid,
+            'window_hours': hours,
+            'host_filter': host,
+            'severity_counters': severity,
+            'type_counters': alert_types,
+            'top_alerts': top_alerts,
+        }
+        if note:
+            result['note'] = note
+            result['top_alerts_error'] = top_alerts_error
+        return result
+
+    def get_host_apps(self, target: str, ifid: int = 0) -> dict[str, Any]:
+        identity = self.resolve_host_identity(target=target, ifid=ifid)
+        iface = self.ntop_client.get_interface(ifid) if hasattr(self.ntop_client, 'get_interface') else None
+        if iface is None:
+            raise RuntimeError('ntopng host-apps requires an interface-capable backend')
+        host_ip = identity.get('resolved_ip') or target
+        vlan = identity.get('resolved_vlan', 0)
+        payload = iface.get_host_l7_stats(host_ip, vlan=vlan)
+        apps = []
+        for row in payload if isinstance(payload, list) else []:
+            if not isinstance(row, dict):
+                continue
+            apps.append({
+                'label': row.get('label') or row.get('name'),
+                'value': row.get('value'),
+                'url': row.get('url'),
+                'raw': row,
+            })
+        return {
+            'host': {
+                'input': target,
+                'resolved_ip': host_ip,
+                'resolved_hostname': identity.get('resolved_hostname'),
+                'resolved_vlan': vlan,
+            },
+            'applications': apps,
+            'total_applications': len(apps),
+            'resolution': identity,
+        }
+
     def get_top_talkers(self, ifid: int = 0, direction: str = 'local') -> dict[str, Any]:
         iface = self.ntop_client.get_interface(ifid) if hasattr(self.ntop_client, 'get_interface') else None
         if iface is None:

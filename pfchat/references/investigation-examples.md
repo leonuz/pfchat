@@ -181,7 +181,41 @@ Look for:
 - whether top talkers are expected local clients or external systems
 - large byte deltas that deserve host-level follow-up with `ntop-host`
 
-## 11. Safely block and then roll back a lab device
+## 11. Show ntopng alerts
+
+Use:
+
+```bash
+python3 pfchat/scripts/pfchat_query.py ntop-alerts --ifid 0 --hours 24
+python3 pfchat/scripts/pfchat_query.py ntop-alerts --ifid 0 --hours 24 --host 192.168.0.95
+```
+
+Natural-language equivalents:
+- "show ntopng alerts from the last 24 hours"
+- "show ntopng alerts for 192.168.0.95"
+
+Look for:
+- severity counters
+- alert type counters
+- whether one host dominates the alert sample
+
+## 12. Show ntopng applications for one host
+
+Use:
+
+```bash
+python3 pfchat/scripts/pfchat_query.py ntop-host-apps --host 192.168.0.95 --ifid 0
+```
+
+Natural-language equivalents:
+- "what applications is 192.168.0.95 using in ntopng?"
+- "show ntopng apps for ferpad.uzc"
+
+Look for:
+- dominant protocols like TLS, QUIC, HTTP, YouTube, DNS
+- whether the app mix matches the device type and expected behavior
+
+## 13. Safely block and then roll back a lab device
 
 Draft first:
 
