@@ -15,6 +15,7 @@ Project backlog, organized by priority.
 - [x] Add richer parsing/normalization for alert-list records so conversational summaries can highlight hosts, severities, and alert families without exposing raw ntopng row structure
 - [x] Convert normalized ntopng alert epochs into ET in higher-level conversational summaries by default
 - [ ] Add ET/local-time rendering to other ntopng summary surfaces such as top talkers and active-host summaries where timestamps are shown
+- [ ] Add higher-level ntopng analytics views (network stats, security summary, host profile, traffic summary) that aggregate current capabilities into dashboard-like responses
 
 - [x] Add safe administrative firewall actions for blocking an IP/device using `draft -> preview -> apply -> audit` workflow
 - [x] Strengthen rollback using pfSense-native object identifiers where available instead of descriptive delete heuristics

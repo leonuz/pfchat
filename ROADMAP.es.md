@@ -44,6 +44,7 @@ Scope inicial:
 - resolución compartida de identidad de host entre inventario pfSense + host keys de ntopng (`ip`, `hostname`, `FQDN`, `ip@vlan`)
 - top talkers, alerts y resúmenes de aplicaciones por host apoyados en ntopng, construidos sobre el adapter en vez de passthrough crudo de endpoints
 - resúmenes conversacionales más ricos a partir de alertas ntopng normalizadas, incluyendo top hosts, top alert names y timestamps en ET
+- vistas de inteligencia de red de más alto nivel inspiradas en patrones tipo proxy/analytics de ntopng, por ejemplo `ntop-network-stats`, `ntop-security-summary`, `ntop-host-profile` y `ntop-traffic-summary`
 - workflow de resúmenes y alertas por Telegram sobre OpenClaw
 - mejor soporte para múltiples segmentos LAN/VLAN en el inventario
 - compatibilidad más amplia con variantes reales de rutas del REST API de pfSense
