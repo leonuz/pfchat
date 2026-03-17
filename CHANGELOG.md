@@ -27,6 +27,7 @@ All notable changes to this project will be documented in this file.
 - Added clean degradation for ntopng features that are unavailable or too slow on this instance: top talkers fall back to active-host byte ranking, and ntop-alerts now prefer alert-list endpoints over the slower top-alert summary path.
 - Added normalized flow/host alert records plus an alert summary block so ntopng alert results are easier to use conversationally.
 - Added Eastern Time rendering for ntopng alert/host summary timestamps and suppressed noisy urllib3 TLS warnings when ntopng SSL verification is intentionally disabled.
+- Added local inventory enrichment from `TOOLS.md` so ntopng host outputs can prefer stable known hostnames/descriptions over generic vendor labels.
 
 ### Validated
 

@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import ipaddress
+import re
+from pathlib import Path
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 from typing import Any
@@ -15,6 +17,7 @@ class NtopngAdapter:
     """Normalize ntopng responses into stable PfChat-native shapes."""
 
     DEFAULT_TZ = ZoneInfo('America/New_York')
+    TOOLS_PATH = Path(__file__).resolve().parents[3] / 'TOOLS.md'
 
     SEVERITY_MAP = {
         '1': 'info',
@@ -27,6 +30,7 @@ class NtopngAdapter:
     def __init__(self, ntop_client: object, pfsense_client: PfSenseClient | None = None):
         self.ntop_client = ntop_client
         self.pfsense_client = pfsense_client
+        self._inventory_by_ip: dict[str, dict[str, str]] | None = None
 
     @staticmethod
     def _extract_vlan(value: Any) -> int:
@@ -39,17 +43,49 @@ class NtopngAdapter:
     def _host_key(ip_value: str, vlan: int) -> str:
         return f'{ip_value}@{vlan}'
 
-    @staticmethod
-    def _normalize_host_row(row: dict[str, Any]) -> dict[str, Any]:
+    def _load_inventory_by_ip(self) -> dict[str, dict[str, str]]:
+        if self._inventory_by_ip is not None:
+            return self._inventory_by_ip
+        inventory: dict[str, dict[str, str]] = {}
+        try:
+            text = self.TOOLS_PATH.read_text()
+        except Exception:
+            self._inventory_by_ip = inventory
+            return inventory
+
+        pattern = re.compile(r"- `(?P<ip>\d+\.\d+\.\d+\.\d+)` — `(?P<hostname>[^`]+)` — `(?P<category>[^`]+)` / `(?P<subcategory>[^`]+)` — `(?P<description>[^`\n]+)`")
+        for match in pattern.finditer(text):
+            inventory[match.group('ip')] = {
+                'hostname': match.group('hostname'),
+                'category': match.group('category'),
+                'subcategory': match.group('subcategory'),
+                'description': match.group('description'),
+            }
+        self._inventory_by_ip = inventory
+        return inventory
+
+    def _enrich_host_identity(self, ip_value: str, hostname: str | None) -> tuple[str | None, dict[str, str] | None]:
+        inventory = self._load_inventory_by_ip()
+        record = inventory.get(ip_value)
+        if not record:
+            return hostname, None
+        preferred_hostname = record.get('hostname') or hostname
+        return preferred_hostname, record
+
+    def _normalize_host_row(self, row: dict[str, Any]) -> dict[str, Any]:
         ip_value = str(row.get('ip') or '').strip()
-        vlan = NtopngAdapter._extract_vlan(row.get('vlan', 0))
+        vlan = self._extract_vlan(row.get('vlan', 0))
         bytes_block = row.get('bytes', {}) if isinstance(row.get('bytes'), dict) else {}
         flows_block = row.get('num_flows', {}) if isinstance(row.get('num_flows'), dict) else {}
+        raw_hostname = row.get('name') if row.get('name') not in (0, '0', None, '') else None
+        preferred_hostname, inventory_record = self._enrich_host_identity(ip_value, raw_hostname)
         return {
             'ip': ip_value,
-            'hostname': row.get('name') if row.get('name') not in (0, '0', None, '') else None,
+            'hostname': preferred_hostname,
+            'display_name': preferred_hostname or raw_hostname or ip_value,
+            'inventory': inventory_record,
             'vlan': vlan,
-            'ntop_host_key': row.get('key') or NtopngAdapter._host_key(ip_value, vlan),
+            'ntop_host_key': row.get('key') or self._host_key(ip_value, vlan),
             'first_seen_epoch': row.get('first_seen'),
             'last_seen_epoch': row.get('last_seen'),
             'bytes': {
@@ -191,10 +227,13 @@ class NtopngAdapter:
 
         if dedup:
             best = next(iter(dedup.values()))
+            inventory_record = self._load_inventory_by_ip().get(str(best.get('ip') or '').strip())
+            resolved_hostname = inventory_record.get('hostname') if inventory_record else best.get('hostname')
             return {
                 'input': target,
                 'resolved_ip': best.get('ip'),
-                'resolved_hostname': best.get('hostname'),
+                'resolved_hostname': resolved_hostname,
+                'inventory': inventory_record,
                 'resolved_vlan': best.get('vlan', 0),
                 'ntop_host_key': best.get('ntop_host_key') or self._host_key(str(best.get('ip')), self._extract_vlan(best.get('vlan', 0))),
                 'sources': sorted(set(sources)),
@@ -507,11 +546,13 @@ class NtopngAdapter:
         host_name = payload.get('name')
         if host_name in (0, '0', None, ''):
             host_name = None
+        preferred_hostname, inventory_record = self._enrich_host_identity(str(payload.get('ip') or identity.get('resolved_ip') or target), identity.get('resolved_hostname') or host_name)
         return {
             'host': {
                 'input': target,
                 'ip': payload.get('ip') or identity.get('resolved_ip') or target,
-                'hostname': identity.get('resolved_hostname') or host_name or payload.get('ip') or target,
+                'hostname': preferred_hostname or payload.get('ip') or target,
+                'inventory': inventory_record,
                 'vlan': identity.get('resolved_vlan', 0),
                 'ntop_host_key': identity.get('ntop_host_key'),
                 'status': 'active' if seen_last else 'unknown',

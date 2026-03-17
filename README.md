@@ -27,6 +27,7 @@ It is model-agnostic: the skill fetches live data from pfSense and lets the curr
 - Query ntopng active hosts and host details through its REST API
 - Normalize ntopng host output into PfChat-native JSON with capability probing and host identity resolution
 - Derive top talkers from ntopng Pro endpoints when available, with active-host byte-ranking fallback when those endpoints are unavailable
+- Enrich ntopng host naming with local inventory data from `TOOLS.md` so known devices prefer stable local hostnames like `tvsala.uzc` over generic labels like `Samsung`
 
 ## Prerequisites on pfSense
 

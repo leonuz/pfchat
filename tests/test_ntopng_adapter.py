@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tempfile
 import unittest
 
 import sys
@@ -47,8 +48,30 @@ class NtopngAdapterTests(unittest.TestCase):
         data = adapter.get_active_hosts(ifid=0, limit=10)
         self.assertEqual(data['total_active_hosts'], 1)
         self.assertEqual(data['hosts'][0]['ip'], '192.168.0.95')
-        self.assertEqual(data['hosts'][0]['hostname'], 'iphoneLeo')
+        self.assertEqual(data['hosts'][0]['hostname'], 'iphoneLeo.uzc')
         self.assertEqual(data['hosts'][0]['bytes']['received'], 40)
+
+    def test_get_active_hosts_prefers_inventory_hostname(self) -> None:
+        class Interface:
+            def get_active_hosts_paginated(self, current_page, per_page):
+                return {'data': [{'ip': '192.168.0.52', 'name': 'Samsung', 'vlan': 0, 'bytes': {'total': 100}, 'num_flows': {'total': 1}}]}
+        class NtopClient:
+            def get_interface(self, ifid=0):
+                return Interface()
+
+        with tempfile.NamedTemporaryFile('w+', delete=False) as tmp:
+            tmp.write("- `192.168.0.52` — `tvsala.uzc` — `wifi` / `endpoint` — `TV 65 Samsung`\n")
+            tmp.flush()
+            original = NtopngAdapter.TOOLS_PATH
+            NtopngAdapter.TOOLS_PATH = Path(tmp.name)
+            try:
+                adapter = NtopngAdapter(NtopClient())
+                data = adapter.get_active_hosts(ifid=0, limit=10)
+            finally:
+                NtopngAdapter.TOOLS_PATH = original
+        self.assertEqual(data['hosts'][0]['hostname'], 'tvsala.uzc')
+        self.assertEqual(data['hosts'][0]['display_name'], 'tvsala.uzc')
+        self.assertEqual(data['hosts'][0]['inventory']['description'], 'TV 65 Samsung')
 
     def test_resolve_host_identity_uses_pfsense_and_ntop(self) -> None:
         class Interface:
@@ -95,7 +118,7 @@ class NtopngAdapterTests(unittest.TestCase):
         adapter = NtopngAdapter(NtopClient())
         summary = adapter.get_host_summary('192.168.0.95', ifid=0)
         self.assertEqual(summary['host']['ip'], '192.168.0.95')
-        self.assertEqual(summary['host']['hostname'], 'iphoneLeo')
+        self.assertEqual(summary['host']['hostname'], 'iphoneLeo.uzc')
         self.assertEqual(summary['activity']['bytes_received'], 77778)
         self.assertTrue(summary['activity']['first_seen_et'].endswith('ET'))
         self.assertEqual(summary['network']['asname'], 'APPLE')
@@ -260,7 +283,7 @@ class NtopngAdapterTests(unittest.TestCase):
 
         adapter = NtopngAdapter(NtopClient())
         data = adapter.get_network_stats(ifid=0, hours=24, limit=5)
-        self.assertEqual(data['summary']['most_active_host'], 'iphoneLeo')
+        self.assertEqual(data['summary']['most_active_host'], 'iphoneLeo.uzc')
         self.assertEqual(data['summary']['active_host_count'], 2)
         self.assertEqual(data['summary']['external_peer_count'], 1)
 
