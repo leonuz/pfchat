@@ -444,6 +444,47 @@ class NtopngAdapter:
             result['endpoint_error'] = endpoint_error
         return result
 
+    def get_network_stats(self, ifid: int = 0, hours: int = 24, limit: int = 10) -> dict[str, Any]:
+        active_hosts = self.get_active_hosts(ifid=ifid, limit=max(limit * 3, 30)).get('hosts', [])
+        top_talkers = self.get_top_talkers(ifid=ifid, direction='local')
+        alerts = self.get_alerts(ifid=ifid, hours=hours)
+
+        top_active_hosts = sorted(
+            active_hosts,
+            key=lambda row: int(((row.get('bytes') or {}).get('total') or 0)),
+            reverse=True,
+        )[:limit]
+
+        external_peers = [
+            row for row in active_hosts
+            if row.get('ip') and not str(row.get('ip')).startswith('192.168.') and row.get('ip') not in {'0.0.0.0', '255.255.255.255'}
+        ]
+        external_peers = sorted(
+            external_peers,
+            key=lambda row: int(((row.get('bytes') or {}).get('total') or 0)),
+            reverse=True,
+        )[:limit]
+
+        summary = {
+            'most_active_host': top_active_hosts[0]['hostname'] if top_active_hosts else None,
+            'most_active_host_ip': top_active_hosts[0]['ip'] if top_active_hosts else None,
+            'most_active_host_bytes': ((top_active_hosts[0].get('bytes') or {}).get('total') if top_active_hosts else None),
+            'top_alert_name': ((alerts.get('summary') or {}).get('top_alert_names') or [{}])[0].get('name') if (alerts.get('summary') or {}).get('top_alert_names') else None,
+            'most_alerted_host': ((alerts.get('summary') or {}).get('top_hosts') or [{}])[0].get('host') if (alerts.get('summary') or {}).get('top_hosts') else None,
+            'active_host_count': len(active_hosts),
+            'external_peer_count': len(external_peers),
+        }
+
+        return {
+            'ifid': ifid,
+            'window_hours': hours,
+            'summary': summary,
+            'top_active_hosts': top_active_hosts,
+            'top_talkers': top_talkers,
+            'alert_summary': alerts.get('summary'),
+            'top_external_peers': external_peers,
+        }
+
     def get_host_summary(self, target: str, ifid: int = 0) -> dict[str, Any]:
         identity = self.resolve_host_identity(target=target, ifid=ifid)
         host_param = identity.get('resolved_ip') or target

@@ -417,6 +417,50 @@ Top-level shape:
 }
 ```
 
+## `ntop-network-stats`
+
+Purpose:
+- aggregate current ntopng-backed visibility into one dashboard-like response
+- combine top active hosts, top talkers, alert summaries, and top external peers
+
+Top-level shape:
+
+```json
+{
+  "ifid": 0,
+  "window_hours": 24,
+  "summary": {
+    "most_active_host": "Samsung",
+    "most_active_host_ip": "192.168.0.52",
+    "most_active_host_bytes": 39973570183,
+    "top_alert_name": "Susp. Device Protocol",
+    "most_alerted_host": "Samsung",
+    "active_host_count": 24,
+    "external_peer_count": 10
+  },
+  "top_active_hosts": [
+    {
+      "ip": "192.168.0.52",
+      "hostname": "Samsung"
+    }
+  ],
+  "top_talkers": {
+    "source": "active_hosts_fallback"
+  },
+  "alert_summary": {
+    "top_alert_names": [
+      {"name": "Susp. Device Protocol", "count": 20}
+    ]
+  },
+  "top_external_peers": [
+    {
+      "ip": "3.14.223.172",
+      "country": "US"
+    }
+  ]
+}
+```
+
 ## `rules`
 
 Purpose:

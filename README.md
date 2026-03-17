@@ -142,6 +142,7 @@ python3 pfchat/scripts/pfchat_query.py ntop-host --host 192.168.0.95 --ifid 0
 python3 pfchat/scripts/pfchat_query.py ntop-top-talkers --ifid 0 --direction local
 python3 pfchat/scripts/pfchat_query.py ntop-alerts --ifid 0 --hours 24
 python3 pfchat/scripts/pfchat_query.py ntop-host-apps --host 192.168.0.95 --ifid 0
+python3 pfchat/scripts/pfchat_query.py ntop-network-stats --ifid 0 --hours 24 --limit 10
 ```
 
 ### 3. Use from OpenClaw
@@ -176,6 +177,8 @@ Use phrasings like these when you want PfChat to pivot into ntopng-backed querie
 - "what host is generating the most alerts?"
 - "what applications is 192.168.0.95 using in ntopng?"
 - "show ntopng apps for ferpad.uzc"
+- "show me a network intelligence summary"
+- "show ntopng network stats for the last 24 hours"
 
 ## Example output
 

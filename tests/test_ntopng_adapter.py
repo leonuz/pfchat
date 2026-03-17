@@ -230,6 +230,40 @@ class NtopngAdapterTests(unittest.TestCase):
         self.assertEqual(data['applications'][0]['label'], 'TLS')
         self.assertEqual(data['host']['resolved_ip'], '192.168.0.95')
 
+    def test_get_network_stats_aggregates_existing_views(self) -> None:
+        class Interface:
+            def get_active_hosts_paginated(self, current_page, per_page):
+                return {
+                    'data': [
+                        {'ip': '192.168.0.95', 'name': 'iphoneLeo', 'vlan': 0, 'bytes': {'total': 100}, 'num_flows': {'total': 1}},
+                        {'ip': '8.8.8.8', 'name': '8.8.8.8', 'vlan': 0, 'bytes': {'total': 50}, 'num_flows': {'total': 1}, 'country': 'US'},
+                    ]
+                }
+            def get_top_local_talkers(self):
+                return [{'host': '192.168.0.95', 'bytes': 100, 'flows': 1}]
+        class Historical:
+            def get_alert_severity_counters(self, epoch_begin, epoch_end):
+                return {'critical': 1}
+            def get_alert_type_counters(self, epoch_begin, epoch_end):
+                return {'dns': 2}
+            def get_flow_alert_list(self, epoch_begin, epoch_end, length=20, host=None):
+                return {'records': []}
+            def get_host_alert_list(self, epoch_begin, epoch_end, length=20, host=None):
+                return {'records': []}
+            def get_alert_list(self, alert_family, epoch_begin, epoch_end, maxhits=20, where_clause=None, order_by=None, group_by=None, select_clause=None):
+                return []
+        class NtopClient:
+            def get_interface(self, ifid=0):
+                return Interface()
+            def get_historical_interface(self, ifid=0):
+                return Historical()
+
+        adapter = NtopngAdapter(NtopClient())
+        data = adapter.get_network_stats(ifid=0, hours=24, limit=5)
+        self.assertEqual(data['summary']['most_active_host'], 'iphoneLeo')
+        self.assertEqual(data['summary']['active_host_count'], 2)
+        self.assertEqual(data['summary']['external_peer_count'], 1)
+
 
 if __name__ == '__main__':
     unittest.main()

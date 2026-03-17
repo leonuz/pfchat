@@ -956,7 +956,7 @@ def main() -> int:
         default='snapshot',
         choices=[
             "capabilities", "devices", "connections", "logs", "interfaces", "health", "rules", "snapshot",
-            "ntop-capabilities", "ntop-hosts", "ntop-host", "ntop-top-talkers", "ntop-alerts", "ntop-host-apps",
+            "ntop-capabilities", "ntop-hosts", "ntop-host", "ntop-top-talkers", "ntop-alerts", "ntop-host-apps", "ntop-network-stats",
             "block-ip", "block-device", "block-egress-port", "block-egress-proto", "unblock-ip", "unblock-device", "draft-show", "draft-list", "apply-draft", "rollback-draft", "pfchat-managed-list", "pfchat-managed-cleanup",
             "quick-egress-block", "quick-egress-unblock"
         ],
@@ -987,7 +987,7 @@ def main() -> int:
         'block-ip', 'block-device', 'block-egress-port', 'block-egress-proto', 'unblock-ip', 'unblock-device',
         'apply-draft', 'rollback-draft', 'pfchat-managed-list', 'pfchat-managed-cleanup', 'quick-egress-block', 'quick-egress-unblock'
     }
-    ntop_commands = {'ntop-capabilities', 'ntop-hosts', 'ntop-host', 'ntop-top-talkers', 'ntop-alerts', 'ntop-host-apps'}
+    ntop_commands = {'ntop-capabilities', 'ntop-hosts', 'ntop-host', 'ntop-top-talkers', 'ntop-alerts', 'ntop-host-apps', 'ntop-network-stats'}
 
     if args.command in pf_commands:
         host, api_key, verify_ssl = load_config()
@@ -1063,6 +1063,8 @@ def main() -> int:
         if not target_host:
             raise SystemExit('Missing --host or --target for ntop-host-apps.')
         data = ntop_adapter.get_host_apps(target=target_host, ifid=args.ifid)
+    elif args.command == 'ntop-network-stats':
+        data = ntop_adapter.get_network_stats(ifid=args.ifid, hours=args.hours, limit=args.limit)
     elif args.command in {"block-ip", "block-device"}:
         data = save_draft(build_block_draft(client, args.target or '', args.command))
     elif args.command == 'block-egress-port':
