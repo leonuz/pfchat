@@ -212,25 +212,47 @@ class NtopngAdapter:
         start = now - max(1, hours) * 3600
         severity = hist.get_alert_severity_counters(start, now)
         alert_types = hist.get_alert_type_counters(start, now)
-        top_alerts = None
-        note = None
-        top_alerts_error = None
+
+        flow_alerts = None
+        host_alerts = None
+        generic_alerts = None
+        notes: list[str] = []
+        errors: dict[str, str] = {}
+
         try:
-            top_alerts = hist.get_alerts_stats(start, now, host=host)
+            flow_alerts = hist.get_flow_alert_list(start, now, length=20, host=host)
         except Exception as exc:
-            top_alerts_error = str(exc)
-            note = 'Alert counter endpoints worked, but ntopng top-alert summary timed out or was unavailable for this window.'
+            errors['flow_alerts'] = str(exc)
+            notes.append('flow alert list unavailable')
+
+        try:
+            host_alerts = hist.get_host_alert_list(start, now, length=20, host=host)
+        except Exception as exc:
+            errors['host_alerts'] = str(exc)
+            notes.append('host alert list unavailable')
+
+        try:
+            where_clause = None
+            if host:
+                where_clause = f'ip = ("{host}")'
+            generic_alerts = hist.get_alert_list('flow', start, now, maxhits=20, where_clause=where_clause, order_by='tstamp desc')
+        except Exception as exc:
+            errors['generic_alert_list'] = str(exc)
+            notes.append('generic alert list unavailable')
+
         result = {
             'ifid': ifid,
             'window_hours': hours,
             'host_filter': host,
             'severity_counters': severity,
             'type_counters': alert_types,
-            'top_alerts': top_alerts,
+            'flow_alerts': flow_alerts,
+            'host_alerts': host_alerts,
+            'generic_alerts': generic_alerts,
         }
-        if note:
-            result['note'] = note
-            result['top_alerts_error'] = top_alerts_error
+        if notes:
+            result['note'] = '; '.join(notes)
+            result['errors'] = errors
         return result
 
     def get_host_apps(self, target: str, ifid: int = 0) -> dict[str, Any]:

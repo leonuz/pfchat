@@ -170,8 +170,12 @@ class NtopngAdapterTests(unittest.TestCase):
                 return {'critical': 1}
             def get_alert_type_counters(self, epoch_begin, epoch_end):
                 return {'dns': 2}
-            def get_alerts_stats(self, epoch_begin, epoch_end, host=None):
-                return {'rows': [{'host': host or 'all'}]}
+            def get_flow_alert_list(self, epoch_begin, epoch_end, length=20, host=None):
+                return {'records': [{'host': host or 'all'}]}
+            def get_host_alert_list(self, epoch_begin, epoch_end, length=20, host=None):
+                return {'records': [{'host': host or 'all'}]}
+            def get_alert_list(self, alert_family, epoch_begin, epoch_end, maxhits=20, where_clause=None, order_by=None, group_by=None, select_clause=None):
+                return [{'family': alert_family, 'where': where_clause}]
         class NtopClient:
             def get_historical_interface(self, ifid=0):
                 return Historical()
@@ -180,15 +184,21 @@ class NtopngAdapterTests(unittest.TestCase):
         data = adapter.get_alerts(ifid=0, hours=24, host='192.168.0.95')
         self.assertEqual(data['severity_counters']['critical'], 1)
         self.assertEqual(data['type_counters']['dns'], 2)
-        self.assertEqual(data['top_alerts']['rows'][0]['host'], '192.168.0.95')
+        self.assertEqual(data['flow_alerts']['records'][0]['host'], '192.168.0.95')
+        self.assertEqual(data['host_alerts']['records'][0]['host'], '192.168.0.95')
+        self.assertEqual(data['generic_alerts'][0]['family'], 'flow')
 
-    def test_get_alerts_handles_top_alert_timeout(self) -> None:
+    def test_get_alerts_handles_list_errors_cleanly(self) -> None:
         class Historical:
             def get_alert_severity_counters(self, epoch_begin, epoch_end):
                 return {'critical': 1}
             def get_alert_type_counters(self, epoch_begin, epoch_end):
                 return {'dns': 2}
-            def get_alerts_stats(self, epoch_begin, epoch_end, host=None):
+            def get_flow_alert_list(self, epoch_begin, epoch_end, length=20, host=None):
+                raise RuntimeError('timeout')
+            def get_host_alert_list(self, epoch_begin, epoch_end, length=20, host=None):
+                raise RuntimeError('timeout')
+            def get_alert_list(self, alert_family, epoch_begin, epoch_end, maxhits=20, where_clause=None, order_by=None, group_by=None, select_clause=None):
                 raise RuntimeError('timeout')
         class NtopClient:
             def get_historical_interface(self, ifid=0):
@@ -196,8 +206,10 @@ class NtopngAdapterTests(unittest.TestCase):
 
         adapter = NtopngAdapter(NtopClient())
         data = adapter.get_alerts(ifid=0, hours=24)
-        self.assertIsNone(data['top_alerts'])
-        self.assertIn('timed out', data['note'])
+        self.assertIsNone(data['flow_alerts'])
+        self.assertIsNone(data['host_alerts'])
+        self.assertIsNone(data['generic_alerts'])
+        self.assertIn('unavailable', data['note'])
 
     def test_get_host_apps_normalizes_l7_stats(self) -> None:
         class Interface:

@@ -330,6 +330,7 @@ If the ntopng top-talker endpoint is not available (for example Pro-only), PfCha
 Purpose:
 - summarize ntopng alerts over a time window
 - optionally focus on one host
+- prefer list endpoints over top-summary endpoints on installations where top-summary is slow or unreliable
 
 Top-level shape:
 
@@ -344,9 +345,18 @@ Top-level shape:
   "type_counters": {
     "dns": 2
   },
-  "top_alerts": {
-    "rows": []
-  }
+  "flow_alerts": {
+    "records": []
+  },
+  "host_alerts": {
+    "records": []
+  },
+  "generic_alerts": [
+    {
+      "alert_id": "26",
+      "severity": "3"
+    }
+  ]
 }
 ```
 

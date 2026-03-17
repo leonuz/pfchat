@@ -145,3 +145,47 @@ class PyApiHistorical:
 
     def get_alert_severity_counters(self, epoch_begin: int, epoch_end: int) -> Any:
         return self.backend._request(self.backend.rest_v2_url + '/get/alert/severity/counters.lua', {'ifid': self.ifid, 'status': 'historical', 'epoch_begin': epoch_begin, 'epoch_end': epoch_end})
+
+    def get_alert_list(self, alert_family: str, epoch_begin: int, epoch_end: int, maxhits: int = 20, where_clause: str | None = None, select_clause: str | None = None, order_by: str | None = None, group_by: str | None = None) -> Any:
+        params: dict[str, Any] = {
+            'ifid': self.ifid,
+            'alert_family': alert_family,
+            'epoch_begin': epoch_begin,
+            'epoch_end': epoch_end,
+            'maxhits_clause': maxhits,
+        }
+        if where_clause:
+            params['where_clause'] = where_clause
+        if select_clause:
+            params['select_clause'] = select_clause
+        if order_by:
+            params['order_by'] = order_by
+        if group_by:
+            params['group_by'] = group_by
+        return self.backend._request(self.backend.rest_v2_url + '/get/alert/list/alerts.lua', params)
+
+    def get_flow_alert_list(self, epoch_begin: int, epoch_end: int, length: int = 20, host: str | None = None) -> Any:
+        params: dict[str, Any] = {
+            'ifid': self.ifid,
+            'epoch_begin': epoch_begin,
+            'epoch_end': epoch_end,
+            'length': length,
+            'start': 0,
+            'alert_id': '0;gte',
+        }
+        if host:
+            params['ip'] = f'{host};eq'
+        return self.backend._request(self.backend.rest_v2_url + '/get/flow/alert/list.lua', params)
+
+    def get_host_alert_list(self, epoch_begin: int, epoch_end: int, length: int = 20, host: str | None = None) -> Any:
+        params: dict[str, Any] = {
+            'ifid': self.ifid,
+            'epoch_begin': epoch_begin,
+            'epoch_end': epoch_end,
+            'length': length,
+            'start': 0,
+            'alert_id': '0;gte',
+        }
+        if host:
+            params['ip'] = f'{host};eq'
+        return self.backend._request(self.backend.rest_v2_url + '/get/host/alert/list.lua', params)

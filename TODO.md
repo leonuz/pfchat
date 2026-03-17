@@ -12,6 +12,7 @@ Project backlog, organized by priority.
 - [x] Keep ntopng commands returning PfChat-native normalized JSON instead of leaking raw endpoint-specific response shapes
 - [x] Decide whether to replace the current custom ntopng transport path with the new lightweight Python-API-style backend for live queries
 - [ ] Investigate whether the malformed `connect/test.lua` response body is a version-specific ntopng bug/proxy quirk worth working around more generally
+- [ ] Add richer parsing/normalization for alert-list records so conversational summaries can highlight hosts, severities, and alert families without exposing raw ntopng row structure
 
 - [x] Add safe administrative firewall actions for blocking an IP/device using `draft -> preview -> apply -> audit` workflow
 - [x] Strengthen rollback using pfSense-native object identifiers where available instead of descriptive delete heuristics
