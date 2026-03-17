@@ -122,6 +122,7 @@ Notes:
 - `NTOPNG_USERNAME` / `NTOPNG_PASSWORD` are used for Basic Auth against ntopng REST endpoints when HTTP API auth is enabled in ntopng.
 - `NTOPNG_AUTH_TOKEN` is an optional alternative that takes precedence over username/password when present.
 - `NTOPNG_VERIFY_SSL` accepts the same boolean forms as pfSense SSL verification.
+- When `NTOPNG_VERIFY_SSL=false`, PfChat suppresses noisy urllib3 TLS warnings so normal command output stays readable.
 - If ntopng returns the HTML login page instead of JSON, enable HTTP API auth in ntopng or generate a user authentication token and set `NTOPNG_AUTH_TOKEN`.
 - Do not commit real API keys, ntopng credentials, or ntopng tokens.
 

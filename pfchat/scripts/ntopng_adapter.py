@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import ipaddress
+from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 from typing import Any
 
 from pfsense_client import PfSenseClient
@@ -11,6 +13,8 @@ from pfsense_client import PfSenseClient
 
 class NtopngAdapter:
     """Normalize ntopng responses into stable PfChat-native shapes."""
+
+    DEFAULT_TZ = ZoneInfo('America/New_York')
 
     SEVERITY_MAP = {
         '1': 'info',
@@ -226,12 +230,14 @@ class NtopngAdapter:
         srv_ip = row.get('srv_ip', {}) if isinstance(row.get('srv_ip'), dict) else flow.get('srv_ip', {}) if isinstance(flow.get('srv_ip'), dict) else {}
         msg = row.get('msg', {}) if isinstance(row.get('msg'), dict) else {}
         tstamp = row.get('tstamp', {}) if isinstance(row.get('tstamp'), dict) else {}
+        time_epoch = tstamp.get('value') or row.get('tstamp')
         return {
             'family': 'flow',
             'alert_name': msg.get('fullname') or msg.get('name') or row.get('alert_name'),
             'severity': cls._normalize_severity_value((row.get('severity') or {}).get('value') if isinstance(row.get('severity'), dict) else row.get('severity')),
             'score': score.get('value') or row.get('score'),
-            'time_epoch': tstamp.get('value') or row.get('tstamp'),
+            'time_epoch': time_epoch,
+            'time_et': cls._format_epoch_et(time_epoch),
             'client': cli_ip.get('ip') or cli_ip.get('value'),
             'client_name': cli_ip.get('name') or cli_ip.get('label'),
             'server': srv_ip.get('ip') or srv_ip.get('value'),
@@ -249,17 +255,27 @@ class NtopngAdapter:
         msg = row.get('msg', {}) if isinstance(row.get('msg'), dict) else {}
         tstamp = row.get('tstamp', {}) if isinstance(row.get('tstamp'), dict) else {}
         sev = row.get('severity', {}) if isinstance(row.get('severity'), dict) else {}
+        time_epoch = tstamp.get('value') or row.get('tstamp')
         return {
             'family': 'host',
             'alert_name': row.get('alert_name') or msg.get('fullname') or msg.get('name'),
             'severity': cls._normalize_severity_value(sev.get('value') or row.get('severity')),
             'score': score.get('value') or row.get('score'),
-            'time_epoch': tstamp.get('value') or row.get('tstamp'),
+            'time_epoch': time_epoch,
+            'time_et': cls._format_epoch_et(time_epoch),
             'host': ip_block.get('value') or ip_block.get('label') or row.get('ip'),
             'host_name': ip_block.get('label') or ip_block.get('shown_label'),
             'description': msg.get('description') or row.get('description'),
             'raw': row,
         }
+
+    @classmethod
+    def _format_epoch_et(cls, epoch: Any) -> str | None:
+        try:
+            epoch_int = int(epoch)
+        except Exception:
+            return None
+        return datetime.fromtimestamp(epoch_int, tz=UTC).astimezone(cls.DEFAULT_TZ).strftime('%Y-%m-%d %I:%M:%S %p ET')
 
     @staticmethod
     def _build_alert_summary(flow_records: list[dict[str, Any]], host_records: list[dict[str, Any]]) -> dict[str, Any]:
@@ -461,7 +477,9 @@ class NtopngAdapter:
             },
             'activity': {
                 'first_seen_epoch': seen_first,
+                'first_seen_et': self._format_epoch_et(seen_first),
                 'last_seen_epoch': seen_last,
+                'last_seen_et': self._format_epoch_et(seen_last),
                 'bytes_total': bytes_total,
                 'bytes_sent': bytes_sent,
                 'bytes_received': bytes_received,

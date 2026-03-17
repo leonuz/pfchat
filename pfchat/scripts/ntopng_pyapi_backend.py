@@ -10,7 +10,10 @@ from __future__ import annotations
 from typing import Any
 
 import json
+import warnings
+
 import requests
+import urllib3
 from requests.auth import HTTPBasicAuth
 
 
@@ -23,6 +26,9 @@ class NtopngPyApiBackend:
         self.verify_ssl = verify_ssl
         self.rest_v2_url = '/lua/rest/v2'
         self.rest_pro_v2_url = '/lua/pro/rest/v2'
+        if not self.verify_ssl:
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            warnings.filterwarnings('ignore', category=urllib3.exceptions.InsecureRequestWarning)
 
     def _headers(self) -> dict[str, str]:
         headers = {'Accept': 'application/json'}

@@ -25,6 +25,10 @@ class NtopngPyApiBackendTests(unittest.TestCase):
         self.assertEqual(payload['rc'], 0)
         self.assertEqual(payload['rsp'], [1, 2])
 
+    def test_init_keeps_verify_ssl_flag(self) -> None:
+        client = NtopngPyApiBackend(url='https://ntop.local:3000', verify_ssl=False)
+        self.assertFalse(client.verify_ssl)
+
 
 if __name__ == '__main__':
     unittest.main()

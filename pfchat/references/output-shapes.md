@@ -270,7 +270,9 @@ Top-level shape:
   },
   "activity": {
     "first_seen_epoch": 1710600000,
+    "first_seen_et": "2024-03-16 02:40:00 PM ET",
     "last_seen_epoch": 1710600300,
+    "last_seen_et": "2024-03-16 02:45:00 PM ET",
     "bytes_total": 123456,
     "bytes_sent": 45678,
     "bytes_received": 77778,
@@ -362,6 +364,7 @@ Top-level shape:
       "family": "flow",
       "alert_name": "Susp. Device Protocol",
       "severity": "warning",
+      "time_et": "2026-03-16 08:15:00 PM ET",
       "client": "192.168.0.52",
       "server": "44.215.143.203"
     }

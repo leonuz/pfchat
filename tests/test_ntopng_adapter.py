@@ -97,6 +97,7 @@ class NtopngAdapterTests(unittest.TestCase):
         self.assertEqual(summary['host']['ip'], '192.168.0.95')
         self.assertEqual(summary['host']['hostname'], 'iphoneLeo')
         self.assertEqual(summary['activity']['bytes_received'], 77778)
+        self.assertTrue(summary['activity']['first_seen_et'].endswith('ET'))
         self.assertEqual(summary['network']['asname'], 'APPLE')
 
     def test_get_capabilities_with_pyapi_backend_shape(self) -> None:
