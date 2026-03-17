@@ -269,6 +269,13 @@ class PfSenseClient:
         ])[0]
         return self._unwrap(self._delete(path, params={'id': rule_id}))
 
+    def delete_firewall_state(self, state_id: int | str) -> Any:
+        path = self._filter_candidates_by_schema([
+            "firewall/state",
+            "firewall/states",
+        ])[0]
+        return self._unwrap(self._delete(path, params={'id': state_id}))
+
     @staticmethod
     def _extract_ip(value: str) -> str:
         """Extract the IP portion from values like 192.168.0.91:443 or [IPv6]:443."""
@@ -449,6 +456,7 @@ class PfSenseClient:
                 "firewall_aliases_delete": any(path in supported for path in ["firewall/alias/delete", "firewall/aliases/delete", "firewall/alias", "firewall/aliases"]),
                 "firewall_rule_write": any(path in supported for path in ["firewall/rules", "firewall/rule"]),
                 "firewall_rule_delete": any(path in supported for path in ["firewall/rule/delete", "firewall/rules/delete", "firewall/rule", "firewall/rules"]),
+                "firewall_state_delete": any(path in supported for path in ["firewall/state/delete", "firewall/states/delete", "firewall/state", "firewall/states"]),
                 "firewall_apply": "firewall/apply" in supported,
             },
         }

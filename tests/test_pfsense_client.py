@@ -153,6 +153,13 @@ class PfSenseClientTests(unittest.TestCase):
         self.assertEqual(result, {'deleted': True})
         mock_delete.assert_called_once_with('firewall/rule', params={'id': 5})
 
+    def test_delete_firewall_state_uses_supported_delete_path(self) -> None:
+        self.client._supported_paths = {'firewall/state'}
+        with patch.object(self.client, '_delete', return_value={'deleted': True}) as mock_delete:
+            result = self.client.delete_firewall_state(211)
+        self.assertEqual(result, {'deleted': True})
+        mock_delete.assert_called_once_with('firewall/state', params={'id': 211})
+
     @patch.object(PfSenseClient, 'get_firewall_states')
     def test_infer_connected_devices_from_states(self, mock_states: MagicMock) -> None:
         mock_states.return_value = [

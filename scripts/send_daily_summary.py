@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import os
 import re
@@ -19,7 +20,6 @@ RESEND_PY = ROOT / 'skills' / 'resend-email' / '.venv' / 'bin' / 'python'
 RESEND_SCRIPT = ROOT / 'skills' / 'resend-email' / 'scripts' / 'send_resend_email.py'
 TOOLS_MD = ROOT / 'TOOLS.md'
 IP_LINE_RE = re.compile(r"- `(?P<ip>[^`]+)` — `(?P<name>[^`]+)`")
-PRIVATE_PREFIXES = ('10.', '172.', '192.168.')
 NOISE_PATTERNS = (
     'ff02::',
     '224.0.0.',
@@ -86,22 +86,46 @@ def pretty_endpoint(value: str, inventory: dict[str, str]) -> str:
     return f"{label}:{port}" if port else label
 
 
+def parse_ip(ip: str) -> ipaddress._BaseAddress | None:
+    try:
+        return ipaddress.ip_address(str(ip).strip())
+    except ValueError:
+        return None
+
+
 def is_internal_ip(ip: str) -> bool:
-    return ip.startswith(PRIVATE_PREFIXES)
+    parsed = parse_ip(ip)
+    return bool(parsed and parsed.is_private and not parsed.is_loopback and not parsed.is_multicast and not parsed.is_unspecified)
 
 
 def is_loopback_ip(ip: str) -> bool:
-    return ip.startswith('127.') or ip == '::1'
+    parsed = parse_ip(ip)
+    return bool(parsed and parsed.is_loopback)
 
 
 def is_multicast_or_broadcast_ip(ip: str) -> bool:
-    return (
-        ip.startswith('224.')
-        or ip.startswith('239.')
-        or ip == '255.255.255.255'
-        or ip.endswith('.255')
-        or ip.startswith('ff02::')
-    )
+    parsed = parse_ip(ip)
+    if not parsed:
+        return False
+    if parsed.version == 4:
+        text = str(parsed)
+        if text == '255.255.255.255' or text.endswith('.255'):
+            return True
+    return bool(parsed.is_multicast)
+
+
+def should_include_connection(conn: dict[str, Any]) -> bool:
+    source_ip, _ = split_ip_port(conn.get('source'))
+    dest_ip, _ = split_ip_port(conn.get('destination'))
+    if not source_ip or not is_internal_ip(source_ip) or is_loopback_ip(source_ip):
+        return False
+    if dest_ip and (
+        is_loopback_ip(dest_ip)
+        or is_multicast_or_broadcast_ip(dest_ip)
+        or dest_ip == '192.168.0.254'
+    ):
+        return False
+    return True
 
 
 def is_noise_log(text: str) -> bool:
@@ -131,18 +155,9 @@ def aggregate_client_usage(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
     })
 
     for conn in connections:
-        if conn.get('interface') != 'vtnet0':
+        if not should_include_connection(conn):
             continue
         source_ip, _ = split_ip_port(conn.get('source'))
-        dest_ip, _ = split_ip_port(conn.get('destination'))
-        if not source_ip or not is_internal_ip(source_ip) or is_loopback_ip(source_ip):
-            continue
-        if dest_ip and (
-            is_loopback_ip(dest_ip)
-            or is_multicast_or_broadcast_ip(dest_ip)
-            or dest_ip == '192.168.0.254'
-        ):
-            continue
 
         item = per_client[source_ip]
         item['ip'] = source_ip
@@ -180,21 +195,7 @@ def top_devices(snapshot: dict[str, Any], limit: int = 8) -> list[dict[str, Any]
 
 def top_connections(snapshot: dict[str, Any], limit: int = 8) -> list[dict[str, Any]]:
     connections = snapshot.get('connections', {}).get('connections', [])
-    filtered: list[dict[str, Any]] = []
-    for conn in connections:
-        if conn.get('interface') != 'vtnet0':
-            continue
-        source_ip, _ = split_ip_port(conn.get('source'))
-        dest_ip, _ = split_ip_port(conn.get('destination'))
-        if not source_ip or not is_internal_ip(source_ip) or is_loopback_ip(source_ip):
-            continue
-        if dest_ip and (
-            is_loopback_ip(dest_ip)
-            or is_multicast_or_broadcast_ip(dest_ip)
-            or dest_ip == '192.168.0.254'
-        ):
-            continue
-        filtered.append(conn)
+    filtered = [conn for conn in connections if should_include_connection(conn)]
     return sorted(filtered, key=lambda c: int(c.get('bytes_total', 0) or 0), reverse=True)[:limit]
 
 
