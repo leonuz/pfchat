@@ -2,6 +2,14 @@
 
 These examples are based on the real workflows validated during this project.
 
+## Investigation logic by question type
+
+Use this quick split before choosing commands:
+
+- use **pfSense-first** for rules, enforcement, blocked events, interfaces, gateways, health, and live state-table visibility
+- use **ntopng-first** for top talkers, host behavior, applications/protocols, and alert-heavy traffic analysis
+- use **both** when the user asks what a host is doing, whether something is suspicious, or whether a containment action is justified
+
 ## 1. What is my WAN IP?
 
 Use:
@@ -250,3 +258,71 @@ Real validation notes from this project:
 - this workflow was validated against `sniperhack.uzc` (`192.168.0.81`)
 - pfSense returned real object IDs for alias and rule creation
 - rollback worked cleanly when those IDs were reused
+
+
+## 14. Deep host triage with pfSense + ntopng
+
+Use when the user asks a real operator question like:
+- "what is this host doing?"
+- "is this client suspicious?"
+- "should I block this device?"
+
+Suggested sequence:
+
+```bash
+python3 pfchat/scripts/pfchat_query.py devices
+python3 pfchat/scripts/pfchat_query.py connections --host 192.168.0.95 --limit 100
+python3 pfchat/scripts/pfchat_query.py logs --host 192.168.0.95 --limit 100
+python3 pfchat/scripts/pfchat_query.py ntop-host --host 192.168.0.95 --ifid 0
+python3 pfchat/scripts/pfchat_query.py ntop-host-apps --host 192.168.0.95 --ifid 0
+python3 pfchat/scripts/pfchat_query.py ntop-alerts --host 192.168.0.95 --ifid 0 --hours 24
+```
+
+Use this to answer:
+- is the host active right now?
+- what destinations or ports is it using?
+- what applications dominate its traffic?
+- has it triggered recent alerts?
+- does the observed traffic justify containment or just monitoring?
+
+## 15. Decide between draft block vs quick egress block
+
+Use **draft/apply/rollback** when:
+- the goal is a managed firewall change
+- the user may want rollback with stored metadata
+- the change should look like a proper administrative action
+
+Use **quick-egress-block** when:
+- the user needs immediate temporary containment
+- the goal is to test or interrupt a specific outbound dependency
+- speed matters more than durable policy structure
+
+Examples:
+
+```bash
+python3 pfchat/scripts/pfchat_query.py block-device --target sniperhack
+python3 pfchat/scripts/pfchat_query.py draft-show --draft-id <id>
+python3 pfchat/scripts/pfchat_query.py apply-draft --draft-id <id> --confirm
+```
+
+```bash
+python3 pfchat/scripts/pfchat_query.py quick-egress-block --target sniperhack --proto tcp --port 443
+python3 pfchat/scripts/pfchat_query.py quick-egress-unblock --target sniperhack --proto tcp --port 443
+```
+
+## 16. Explain whether a top talker is benign or worth containment
+
+Use:
+
+```bash
+python3 pfchat/scripts/pfchat_query.py ntop-top-talkers --ifid 0 --direction local
+python3 pfchat/scripts/pfchat_query.py ntop-host --host <host-or-ip> --ifid 0
+python3 pfchat/scripts/pfchat_query.py ntop-host-apps --host <host-or-ip> --ifid 0
+python3 pfchat/scripts/pfchat_query.py connections --host <host-or-ip> --limit 100
+python3 pfchat/scripts/pfchat_query.py logs --host <host-or-ip> --limit 100
+```
+
+Interpretation model:
+- heavy bytes + expected apps + no alerts often means normal noisy traffic
+- heavy bytes + odd apps/protocols + repeated blocks/alerts deserves escalation
+- repeated outbound attempts to constrained destinations may justify a temporary quick egress block during investigation

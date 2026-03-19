@@ -1,6 +1,6 @@
 ---
 name: pfchat
-description: Query and analyze a pfSense firewall in real time through the pfSense REST API, using the current OpenClaw model instead of a hard-coded provider. Use when the user wants to inspect connected devices, active connections, firewall logs, interface status, WAN status, WAN/public IP address, system health, gateway status, or firewall rules from pfSense; investigate suspicious activity; explain what a host is doing; or generate a live security snapshot/report from pfSense API data. Also use for equivalent Spanish requests such as asking for the dirección WAN, IP WAN, IP pública del firewall, dispositivos activos, tráfico sospechoso, gateways, reglas, or a resumen del firewall.
+description: Query, correlate, and safely administer a pfSense firewall plus its ntopng traffic-intelligence layer through APIs, using the current OpenClaw model instead of a hard-coded provider. Use when the user wants to inspect devices, active connections, firewall logs, WAN/interface/gateway/system status, firewall rules, top talkers, per-host traffic behavior, ntopng alerts, application/protocol usage, or to understand what a client is doing right now. Also use when the user wants controlled pfSense administrative actions such as drafting/applying/rolling back host blocks or quick egress controls. Also use for equivalent Spanish requests such as dirección WAN, tráfico sospechoso, top talkers, alertas de ntopng, qué está haciendo un host, bloquear un equipo, o resumen del firewall.
 ---
 
 # PfChat
@@ -12,11 +12,15 @@ Keep the skill model-agnostic. Do not call Anthropic or any provider SDK directl
 ## Quick workflow
 
 1. Load connection details from the shared `pfchat/.env` setup or inherited environment variables.
-2. Use `scripts/pfchat_query.py` to fetch only the data needed.
-3. If the user asks a broad firewall question, start with `snapshot`.
-4. If the user wants host-level traffic intelligence, pivot into the `ntop-*` commands.
-5. Summarize findings clearly, and flag anything risky or odd.
-6. If the user wants a reusable artifact, produce a Markdown report from the fetched JSON.
+2. Decide which backend is authoritative for the question:
+   - pfSense for rules, states, logs, interfaces, gateways, and firewall administration
+   - ntopng for top talkers, host behavior, apps/protocols, and alert context
+3. Use `scripts/pfchat_query.py` to fetch only the data needed.
+4. If the user asks a broad firewall question, start with `snapshot`.
+5. If the user asks what a client is doing, combine pfSense state/log data with `ntop-*` host views.
+6. If the user wants an administrative change, prefer draft/preview/confirm/rollback flows over direct mutation.
+7. Summarize findings clearly, and flag anything risky or odd.
+8. If the user wants a reusable artifact, produce a Markdown report from the fetched JSON.
 
 ## Configuration
 
@@ -78,6 +82,27 @@ python3 skills/pfchat/scripts/pfchat_query.py ntop-network-stats --ifid 0 --hour
 ### Reusable Python module
 
 If a task needs custom logic, import `scripts/pfsense_client.py` from a small one-off Python script instead of rewriting the HTTP client.
+
+## Operating model
+
+Use pfSense as the authoritative source for:
+
+- firewall rules and enforcement
+- live state-table traffic
+- filterlog and recent firewall events
+- interfaces, gateways, WAN status, and system health
+- ARP/DHCP-backed device inventory
+- administrative writes such as aliases, rules, apply, and state cleanup
+
+Use ntopng as the authoritative source for:
+
+- top talkers and traffic ranking
+- per-host traffic profile
+- application/protocol visibility
+- network alerts and host alert context
+- higher-level traffic summaries when firewall states are too low-level
+
+When the user asks what a host is doing, correlate both sides instead of answering from only one backend.
 
 ## Capability map
 
@@ -174,11 +199,14 @@ When the user asks a vague security question like “anything suspicious?” or 
 3. Inspect recent logs for repeated blocked attempts from the same source.
 4. Inspect active connections for unusual destinations or high-volume patterns.
 5. Inspect health/gateway data for overload or WAN issues.
-6. Return a compact assessment with:
+6. If the snapshot suggests a noisy or suspicious host, pivot into `ntop-top-talkers`, `ntop-host`, `ntop-host-apps`, or `ntop-alerts` for host-level explanation.
+7. Return a compact assessment with:
    - key findings
    - evidence
    - confidence/uncertainty
    - next actions
+
+For concrete multi-step examples, read `references/investigation-examples.md`.
 
 ## Output guidance
 
@@ -214,8 +242,8 @@ Read `references/endpoints.md` for endpoint fallback behavior and version notes.
 - `scripts/ntopng_client.py` — ntopng transport/auth client
 - `scripts/ntopng_pyapi_backend.py` — lightweight ntopng backend with installation-aware fallbacks
 - `scripts/ntopng_adapter.py` — normalized ntopng-to-PfChat adapter layer
-- `references/output-shapes.md` — expected high-level JSON output by command
+- `references/output-shapes.md` — expected high-level JSON output by command, including visibility vs intelligence vs administrative responses
 - `references/endpoints.md` — supported endpoints and fallback notes
 - `references/upstream-notes.md` — upstream pfrest/OpenAPI notes for future releases
 - `references/investigation-patterns.md` — practical investigation heuristics and reporting patterns
-- `references/investigation-examples.md` — concrete example workflows for WAN, blocked traffic, top talkers, and host triage
+- `references/investigation-examples.md` — concrete technical playbooks for WAN, blocked traffic, top talkers, host triage, and administrative containment

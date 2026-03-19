@@ -4,6 +4,12 @@ This file documents the high-level JSON shape returned by each CLI command.
 
 These are not strict schemas. Fields may vary across pfSense versions and package builds, but these are the practical top-level shapes you should expect.
 
+Use this file with a simple mental split:
+
+- **pfSense visibility/admin outputs** answer policy, enforcement, state, health, and write-path questions
+- **ntopng intelligence outputs** answer host behavior, traffic ranking, apps/protocols, and alert-context questions
+- **draft/apply/rollback outputs** are operational responses, not just observational data
+
 ## `capabilities`
 
 Purpose:
@@ -601,3 +607,136 @@ Top-level shape:
 
 If one subsection fails, PfChat should keep the others when possible and record the failure under `errors`.
 The `summary` block is meant to be the first compact layer for Telegram, email summaries, and fast triage.
+
+
+## Administrative command shapes
+
+These commands return operational objects that describe intent, preview, apply status, rollback metadata, or managed cleanup state.
+
+### `block-ip` / `block-device` / `block-egress-port` / `block-egress-proto`
+
+Purpose:
+- build a managed draft for a future firewall change
+- resolve a host/IP into PfChat's proposed alias/rule model
+
+Typical top-level shape:
+
+```json
+{
+  "draft_id": "draft-20260319-abcdef",
+  "action": "block-device",
+  "target": {
+    "hostname": "sniperhack",
+    "ip": "192.168.0.81",
+    "interface": "lan"
+  },
+  "proposal": {
+    "alias_name": "pfb_sniperhack_192_168_0_81",
+    "rule_interface": "lan",
+    "rule_action": "block",
+    "rule_protocol": "tcp",
+    "destination_port": "80",
+    "rule_description": "PfChat draft egress block for sniperhack (192.168.0.81) tcp/80"
+  },
+  "capabilities": {
+    "firewall_aliases_write": true,
+    "firewall_rule_write": true,
+    "firewall_apply": true
+  },
+  "apply_status": "draft-only"
+}
+```
+
+### `apply-draft`
+
+Purpose:
+- preview or perform a real managed firewall change from a saved draft
+
+Typical top-level shape after confirm:
+
+```json
+{
+  "draft_id": "draft-20260319-abcdef",
+  "confirmed": true,
+  "applied": true,
+  "alias": {
+    "id": 3,
+    "name": "pfb_sniperhack_192_168_0_81"
+  },
+  "rule": {
+    "id": 5
+  },
+  "firewall_apply": {
+    "applied": true
+  },
+  "rollback": {
+    "rule_id": 5,
+    "alias_id": 3
+  }
+}
+```
+
+### `rollback-draft`
+
+Purpose:
+- revert a managed firewall change using stored rollback metadata
+
+Typical top-level shape:
+
+```json
+{
+  "draft_id": "draft-20260319-abcdef",
+  "confirmed": true,
+  "rolled_back": true,
+  "deleted": {
+    "rule": true,
+    "alias": true
+  },
+  "firewall_apply": {
+    "applied": true
+  }
+}
+```
+
+### `quick-egress-block` / `quick-egress-unblock`
+
+Purpose:
+- apply or remove an immediate host-specific containment control
+- typically used during live troubleshooting or short-lived investigation
+
+Typical top-level shape:
+
+```json
+{
+  "target": {
+    "hostname": "sniperhack",
+    "ip": "192.168.0.81"
+  },
+  "protocol": "tcp",
+  "port": "443",
+  "rule": {
+    "id": 12,
+    "description": "PfChat quick egress block for sniperhack (192.168.0.81) tcp/443"
+  },
+  "states_cleared": 2,
+  "applied": true
+}
+```
+
+### `pfchat-managed-list` / `pfchat-managed-cleanup` / `unblock-ip` / `unblock-device`
+
+Purpose:
+- enumerate and clean PfChat-managed firewall objects
+
+Typical top-level shape:
+
+```json
+{
+  "managed_aliases": [],
+  "managed_rules": [],
+  "removed": {
+    "aliases": 0,
+    "rules": 0
+  }
+}
+```
