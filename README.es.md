@@ -85,7 +85,7 @@ Usa PfChat para inspeccionar estado vivo de red y firewall:
 
 Usa PfChat para preguntas orientadas a seguridad como:
 
-- ¿qué está haciendo `iphoneLeo` ahora mismo?
+- ¿qué está haciendo `example-client` ahora mismo?
 - ¿qué cliente está generando más tráfico?
 - ¿qué bloqueó el firewall en la última hora?
 - ¿ntopng muestra algo sospechoso para este host?
@@ -303,7 +303,7 @@ Ciclo típico:
 Ejemplo:
 
 ```bash
-python3 pfchat/scripts/pfchat_query.py block-device --target sniperhack
+python3 pfchat/scripts/pfchat_query.py block-device --target lab-host
 python3 pfchat/scripts/pfchat_query.py draft-show --draft-id <id>
 python3 pfchat/scripts/pfchat_query.py apply-draft --draft-id <id> --confirm
 python3 pfchat/scripts/pfchat_query.py rollback-draft --draft-id <id> --confirm
@@ -316,8 +316,8 @@ Usa la ruta quick egress cuando necesitas contención inmediata y orientada a pr
 Ejemplo:
 
 ```bash
-python3 pfchat/scripts/pfchat_query.py quick-egress-block --target sniperhack --proto tcp --port 443
-python3 pfchat/scripts/pfchat_query.py quick-egress-unblock --target sniperhack --proto tcp --port 443
+python3 pfchat/scripts/pfchat_query.py quick-egress-block --target lab-host --proto tcp --port 443
+python3 pfchat/scripts/pfchat_query.py quick-egress-unblock --target lab-host --proto tcp --port 443
 ```
 
 Esta ruta sirve cuando:
@@ -433,11 +433,13 @@ Notas importantes:
 
 ## Configuración
 
-PfChat usa este archivo como setup local único del proyecto:
+PfChat busca configuración en este orden:
 
-- `/home/openclaw/.openclaw/workspace/pfchat/.env`
+1. variables de entorno heredadas
+2. `.env` en el directorio de trabajo actual
+3. `.env` junto a la skill/proyecto cuando exista
 
-Créalo desde el ejemplo:
+Crea un `.env` local desde el ejemplo:
 
 ```bash
 cp .env.example .env
@@ -477,12 +479,12 @@ Solo desactivan la validación de confianza del certificado, algo común con cer
 
 ### Nota importante de configuración
 
-PfChat ahora usa la misma setup local en ambas superficies:
+PfChat ahora usa el mismo modelo de carga de configuración en ambas superficies:
 
 - el CLI del repo
 - la skill activa de OpenClaw
 
-Ya no existe la separación donde ntopng vivía en una superficie y no en la otra.
+Ya no existe la separación donde ntopng vivía en una superficie y no en la otra. Mantén la configuración portable; no dependas de una ruta absoluta específica de una sola máquina.
 
 No subas API keys, passwords ni tokens reales al repositorio.
 
@@ -510,7 +512,7 @@ Ejemplos:
 
 - `revisa qué dispositivos están conectados al pfSense`
 - `mira si hay algo sospechoso en mi firewall`
-- `qué está haciendo iphoneLeo ahora mismo`
+- `qué está haciendo example-client ahora mismo`
 - `cuál es mi dirección WAN`
 - `muéstrame reglas de firewall relacionadas con OpenVPN`
 - `muéstrame hosts activos en ntopng`
@@ -591,7 +593,7 @@ python3 pfchat/scripts/pfchat_query.py ntop-alerts --ifid 0 --hours 24
 ### Bloquear un host de forma segura
 
 ```bash
-python3 pfchat/scripts/pfchat_query.py block-device --target sniperhack
+python3 pfchat/scripts/pfchat_query.py block-device --target lab-host
 python3 pfchat/scripts/pfchat_query.py apply-draft --draft-id <id>
 python3 pfchat/scripts/pfchat_query.py apply-draft --draft-id <id> --confirm
 python3 pfchat/scripts/pfchat_query.py rollback-draft --draft-id <id> --confirm
@@ -600,8 +602,8 @@ python3 pfchat/scripts/pfchat_query.py rollback-draft --draft-id <id> --confirm
 ### Aplicar un bloqueo rápido de egress por host
 
 ```bash
-python3 pfchat/scripts/pfchat_query.py quick-egress-block --target sniperhack --proto tcp --port 443
-python3 pfchat/scripts/pfchat_query.py quick-egress-unblock --target sniperhack --proto tcp --port 443
+python3 pfchat/scripts/pfchat_query.py quick-egress-block --target lab-host --proto tcp --port 443
+python3 pfchat/scripts/pfchat_query.py quick-egress-unblock --target lab-host --proto tcp --port 443
 ```
 
 ## Estructura del repositorio

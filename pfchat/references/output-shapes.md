@@ -49,7 +49,7 @@ Top-level shape:
   "total_devices": 34,
   "devices": [
     {
-      "hostname": "iphoneLeo",
+      "hostname": "example-client",
       "ip_address": "192.168.0.95",
       "mac_address": "80:96:98:58:4a:39",
       "interface": "LAN",
@@ -233,7 +233,7 @@ Top-level shape:
   "hosts": [
     {
       "ip": "192.168.0.95",
-      "hostname": "iphoneLeo",
+      "hostname": "example-client",
       "vlan": 0,
       "ntop_host_key": "192.168.0.95@0",
       "first_seen_epoch": 1710600000,
@@ -406,7 +406,7 @@ Top-level shape:
   "host": {
     "input": "192.168.0.95",
     "resolved_ip": "192.168.0.95",
-    "resolved_hostname": "iphoneLeo",
+    "resolved_hostname": "example-client",
     "resolved_vlan": 0
   },
   "applications": [
@@ -508,11 +508,11 @@ Top-level shape:
     "input": "192.168.0.81",
     "kind": "device",
     "resolution": "device-match",
-    "hostname": "sniperhack",
+    "hostname": "lab-host",
     "ip": "192.168.0.81"
   },
   "proposal": {
-    "alias_name": "pfb_sniperhack_192_168_0_81",
+    "alias_name": "pfb_lab-host_192_168_0_81",
     "rule_interface": "lan",
     "rule_action": "block"
   },
@@ -547,8 +547,8 @@ Confirmed apply shape:
   "draft_id": "12d4154718ac",
   "status": "applied",
   "results": {
-    "alias": {"id": 3, "name": "pfb_sniperhack_192_168_0_81"},
-    "rule": {"id": 5, "descr": "PfChat draft block for sniperhack (192.168.0.81)"},
+    "alias": {"id": 3, "name": "pfb_lab-host_192_168_0_81"},
+    "rule": {"id": 5, "descr": "PfChat draft block for lab-host (192.168.0.81)"},
     "apply": {"applied": true}
   }
 }
@@ -626,17 +626,17 @@ Typical top-level shape:
   "draft_id": "draft-20260319-abcdef",
   "action": "block-device",
   "target": {
-    "hostname": "sniperhack",
+    "hostname": "lab-host",
     "ip": "192.168.0.81",
     "interface": "lan"
   },
   "proposal": {
-    "alias_name": "pfb_sniperhack_192_168_0_81",
+    "alias_name": "pfb_lab-host_192_168_0_81",
     "rule_interface": "lan",
     "rule_action": "block",
     "rule_protocol": "tcp",
     "destination_port": "80",
-    "rule_description": "PfChat draft egress block for sniperhack (192.168.0.81) tcp/80"
+    "rule_description": "PfChat draft egress block for lab-host (192.168.0.81) tcp/80"
   },
   "capabilities": {
     "firewall_aliases_write": true,
@@ -661,7 +661,7 @@ Typical top-level shape after confirm:
   "applied": true,
   "alias": {
     "id": 3,
-    "name": "pfb_sniperhack_192_168_0_81"
+    "name": "pfb_lab-host_192_168_0_81"
   },
   "rule": {
     "id": 5
@@ -709,14 +709,14 @@ Typical top-level shape:
 ```json
 {
   "target": {
-    "hostname": "sniperhack",
+    "hostname": "lab-host",
     "ip": "192.168.0.81"
   },
   "protocol": "tcp",
   "port": "443",
   "rule": {
     "id": 12,
-    "description": "PfChat quick egress block for sniperhack (192.168.0.81) tcp/443"
+    "description": "PfChat quick egress block for lab-host (192.168.0.81) tcp/443"
   },
   "states_cleared": 2,
   "applied": true

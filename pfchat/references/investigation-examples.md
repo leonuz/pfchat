@@ -43,7 +43,7 @@ Then group by internal host and sort by:
 
 Prefer local inventory names over raw IPs in the final report.
 
-## 3. What is iphoneLeo doing?
+## 3. What is example-client doing?
 
 Use:
 
@@ -255,7 +255,7 @@ python3 pfchat/scripts/pfchat_query.py rollback-draft --draft-id <id> --confirm
 ```
 
 Real validation notes from this project:
-- this workflow was validated against `sniperhack.uzc` (`192.168.0.81`)
+- this workflow was validated against `lab-host.local` (`192.168.0.81`)
 - pfSense returned real object IDs for alias and rule creation
 - rollback worked cleanly when those IDs were reused
 
@@ -300,14 +300,14 @@ Use **quick-egress-block** when:
 Examples:
 
 ```bash
-python3 pfchat/scripts/pfchat_query.py block-device --target sniperhack
+python3 pfchat/scripts/pfchat_query.py block-device --target lab-host
 python3 pfchat/scripts/pfchat_query.py draft-show --draft-id <id>
 python3 pfchat/scripts/pfchat_query.py apply-draft --draft-id <id> --confirm
 ```
 
 ```bash
-python3 pfchat/scripts/pfchat_query.py quick-egress-block --target sniperhack --proto tcp --port 443
-python3 pfchat/scripts/pfchat_query.py quick-egress-unblock --target sniperhack --proto tcp --port 443
+python3 pfchat/scripts/pfchat_query.py quick-egress-block --target lab-host --proto tcp --port 443
+python3 pfchat/scripts/pfchat_query.py quick-egress-unblock --target lab-host --proto tcp --port 443
 ```
 
 ## 16. Explain whether a top talker is benign or worth containment

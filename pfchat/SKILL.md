@@ -11,7 +11,7 @@ Keep the skill model-agnostic. Do not call Anthropic or any provider SDK directl
 
 ## Quick workflow
 
-1. Load connection details from the shared `pfchat/.env` setup or inherited environment variables.
+1. Load connection details from inherited environment variables first, then portable local `.env` fallbacks.
 2. Decide which backend is authoritative for the question:
    - pfSense for rules, states, logs, interfaces, gateways, and firewall administration
    - ntopng for top talkers, host behavior, apps/protocols, and alert context
@@ -24,7 +24,7 @@ Keep the skill model-agnostic. Do not call Anthropic or any provider SDK directl
 
 ## Configuration
 
-Expect these variables in the environment or the shared project-local `.env` file at `/home/openclaw/.openclaw/workspace/pfchat/.env`:
+Expect these variables in the environment or a local `.env` file discoverable from the current working directory or skill/project directory:
 
 - `PFSENSE_HOST`
 - `PFSENSE_API_KEY`
@@ -50,7 +50,7 @@ NTOPNG_VERIFY_SSL=false
 
 `PFSENSE_VERIFY_SSL=false` and `NTOPNG_VERIFY_SSL=false` still use HTTPS. They only disable certificate trust validation, which is common for pfSense/ntopng deployments using self-signed certificates or an internal CA not installed on the client host.
 
-Use `/home/openclaw/.openclaw/workspace/pfchat/.env` as the single PfChat setup. Do not maintain a separate active-skill-only `.env`. Do not print secrets back to the user.
+Prefer inherited environment variables first, then `.env` in the current working directory, then `.env` next to the skill/project when present. Do not print secrets back to the user.
 
 ## Entry points
 

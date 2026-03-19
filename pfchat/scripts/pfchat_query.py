@@ -7,7 +7,7 @@ Examples:
   python3 skills/pfchat/scripts/pfchat_query.py logs --limit 200 --contains block --interface vtnet1
   python3 skills/pfchat/scripts/pfchat_query.py snapshot --limit 150 --once compact
   python3 skills/pfchat/scripts/pfchat_query.py block-ip --target 1.2.3.4
-  python3 skills/pfchat/scripts/pfchat_query.py block-device --target iphoneLeo
+  python3 skills/pfchat/scripts/pfchat_query.py block-device --target example-client
   python3 skills/pfchat/scripts/pfchat_query.py draft-show --draft-id <id>
   python3 skills/pfchat/scripts/pfchat_query.py apply-draft --draft-id <id>
 """
@@ -100,21 +100,29 @@ def validate_api_key(api_key: str) -> str:
     return api_key
 
 
-def get_shared_env_path() -> Path:
+def load_project_envs() -> None:
     script_path = Path(__file__).resolve()
     candidates = [
+        Path('.env').resolve(),
+        script_path.parents[1] / '.env',
         script_path.parents[2] / '.env',
         script_path.parents[3] / 'pfchat' / '.env',
     ]
+    seen: set[Path] = set()
     for candidate in candidates:
-        if candidate.exists():
-            return candidate
-    return candidates[0]
+        try:
+            candidate = candidate.resolve()
+        except FileNotFoundError:
+            candidate = candidate.absolute()
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        load_env_file(candidate)
 
 
 
 def load_config() -> tuple[str, str, bool]:
-    load_env_file(get_shared_env_path())
+    load_project_envs()
 
     host = validate_host(os.environ.get("PFSENSE_HOST", ""))
     api_key = validate_api_key(os.environ.get("PFSENSE_API_KEY", ""))
@@ -133,7 +141,7 @@ def validate_url_base(url: str, env_name: str) -> str:
 
 
 def load_ntopng_config() -> tuple[str, str, str, str, bool]:
-    load_env_file(get_shared_env_path())
+    load_project_envs()
 
     base_url = validate_url_base(os.environ.get('NTOPNG_BASE_URL', ''), 'NTOPNG_BASE_URL')
     username = os.environ.get('NTOPNG_USERNAME', '').strip()
