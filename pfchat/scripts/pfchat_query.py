@@ -100,10 +100,21 @@ def validate_api_key(api_key: str) -> str:
     return api_key
 
 
+def get_shared_env_path() -> Path:
+    script_path = Path(__file__).resolve()
+    candidates = [
+        script_path.parents[2] / '.env',
+        script_path.parents[3] / 'pfchat' / '.env',
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
+
+
+
 def load_config() -> tuple[str, str, bool]:
-    script_root = Path(__file__).resolve().parents[2]
-    load_env_file(script_root / ".env")
-    load_env_file(Path(".env"))
+    load_env_file(get_shared_env_path())
 
     host = validate_host(os.environ.get("PFSENSE_HOST", ""))
     api_key = validate_api_key(os.environ.get("PFSENSE_API_KEY", ""))
@@ -122,9 +133,7 @@ def validate_url_base(url: str, env_name: str) -> str:
 
 
 def load_ntopng_config() -> tuple[str, str, str, str, bool]:
-    script_root = Path(__file__).resolve().parents[2]
-    load_env_file(script_root / '.env')
-    load_env_file(Path('.env'))
+    load_env_file(get_shared_env_path())
 
     base_url = validate_url_base(os.environ.get('NTOPNG_BASE_URL', ''), 'NTOPNG_BASE_URL')
     username = os.environ.get('NTOPNG_USERNAME', '').strip()

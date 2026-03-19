@@ -4,6 +4,20 @@ Todos los cambios relevantes de este proyecto se documentan aquí.
 
 ## [Unreleased]
 
+### Añadido
+
+- Se migró la copia activa `skills/pfchat` de OpenClaw para incluir soporte ntopng (`ntop-capabilities`, `ntop-hosts`, `ntop-host`, `ntop-top-talkers`, `ntop-alerts`, `ntop-host-apps`, `ntop-network-stats`), de modo que la skill activa y el CLI del repo expongan la misma superficie de capacidades.
+
+### Cambiado
+
+- PfChat ahora trata `/home/openclaw/.openclaw/workspace/pfchat/.env` como el setup local único del proyecto para credenciales de pfSense y ntopng.
+- Tanto el CLI del repo como la skill activa de OpenClaw ahora resuelven la configuración de PfChat desde la misma ruta compartida de `.env` en vez de depender de fallbacks divididos por ubicación.
+- Se actualizó la documentación bilingüe y las instrucciones de la skill para documentar el setup unificado y la paridad de ntopng en la skill activa.
+
+### Validado
+
+- Se revalidó en vivo el setup unificado: el `pfchat/.env` compartido funciona tanto para acceso a la API de pfSense como para acceso a la API de ntopng.
+
 ## [0.3.0] - 2026-03-17
 
 ### Añadido

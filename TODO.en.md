@@ -42,6 +42,7 @@ Project backlog, organized by priority.
 - [x] Add ntopng alerts support (global + per-host) with severity normalization
 - [x] Add ntopng host application/protocol summaries (L7) through a stable PfChat output model
 - [x] Add richer parsing/normalization for alert-list records so conversational summaries can highlight hosts, severities, and alert families without exposing raw ntopng row structure
+- [x] Keep the active OpenClaw skill in parity with the repo CLI for ntopng commands and shared config loading
 
 ## Low priority
 

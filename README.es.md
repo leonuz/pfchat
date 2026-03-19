@@ -20,6 +20,8 @@ Es agnóstica al modelo: la skill obtiene datos vivos desde pfSense y deja el an
 - Añade una capa compacta de `summary` dentro del snapshot para respuestas y reportes más rápidos
 - Descubre capacidades soportadas desde el OpenAPI schema en vivo
 - Cachea localmente el OpenAPI schema para reducir fetches repetidos
+- Consulta ntopng vía su REST API para complementar la visibilidad de hosts que pfSense no resume por sí solo
+- Normaliza hosts, alertas y top talkers de ntopng a JSON nativo de PfChat
 
 ## Prerrequisitos en pfSense
 
@@ -107,11 +109,18 @@ PFSENSE_VERIFY_SSL=false
 Notas:
 - `PFSENSE_VERIFY_SSL=false` mantiene HTTPS activo; solo desactiva la validación de confianza del certificado.
 - Esto es normal cuando pfSense usa certificado autofirmado o una CA interna que el host cliente no tiene instalada.
-- El CLI hace fallback al archivo `pfchat/.env` según la ruta del script, lo cual ayuda cuando la skill se invoca desde otros canales o directorios de trabajo.
+- PfChat ahora usa `/home/openclaw/.openclaw/workspace/pfchat/.env` como setup único del proyecto tanto para el CLI del repo como para la skill activa de OpenClaw.
 - `PFSENSE_HOST` debe ser solo el hostname o la IP. No incluyas `https://` ni paths.
 - `PFSENSE_API_KEY` debe ser una clave real, no el placeholder del ejemplo.
 - `PFSENSE_VERIFY_SSL` acepta `true/false`, `1/0`, `yes/no` u `on/off`.
+- `NTOPNG_BASE_URL` debe ser una URL completa como `https://192.168.0.254:3000`.
+- `NTOPNG_USERNAME` / `NTOPNG_PASSWORD` se usan para Basic Auth contra endpoints REST de ntopng cuando HTTP API auth está habilitado en ntopng.
+- `NTOPNG_AUTH_TOKEN` es una alternativa opcional que tiene prioridad sobre usuario/contraseña cuando está presente.
+- `NTOPNG_VERIFY_SSL` acepta las mismas formas booleanas que la verificación SSL de pfSense.
+- Cuando `NTOPNG_VERIFY_SSL=false`, PfChat suprime warnings ruidosos de urllib3 para mantener la salida normal legible.
+- Si ntopng devuelve la página HTML de login en vez de JSON, habilita HTTP API auth en ntopng o genera un token de autenticación de usuario y configúralo en `NTOPNG_AUTH_TOKEN`.
 - No subas claves reales al repositorio.
+- La skill activa de OpenClaw ahora incluye los mismos comandos de ntopng que el CLI del repo, así que ya no hay una superficie de capacidades dividida.
 
 ### 2. Ejecuta consultas directas
 
@@ -123,6 +132,13 @@ python3 pfchat/scripts/pfchat_query.py snapshot --limit 150
 python3 pfchat/scripts/pfchat_query.py --once compact
 python3 pfchat/scripts/pfchat_query.py --once wan
 python3 pfchat/scripts/pfchat_query.py --once blocked
+python3 pfchat/scripts/pfchat_query.py ntop-capabilities
+python3 pfchat/scripts/pfchat_query.py ntop-hosts --ifid 0 --limit 50
+python3 pfchat/scripts/pfchat_query.py ntop-host --host 192.168.0.95 --ifid 0
+python3 pfchat/scripts/pfchat_query.py ntop-top-talkers --ifid 0 --direction local
+python3 pfchat/scripts/pfchat_query.py ntop-alerts --ifid 0 --hours 24
+python3 pfchat/scripts/pfchat_query.py ntop-host-apps --host 192.168.0.95 --ifid 0
+python3 pfchat/scripts/pfchat_query.py ntop-network-stats --ifid 0 --hours 24 --limit 10
 ```
 
 ### 3. Úsala desde OpenClaw

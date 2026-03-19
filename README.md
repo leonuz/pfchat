@@ -115,7 +115,7 @@ PFSENSE_VERIFY_SSL=false
 Notes:
 - `PFSENSE_VERIFY_SSL=false` keeps HTTPS enabled; it only disables certificate trust validation.
 - This is normal when pfSense uses a self-signed certificate or an internal CA that is not installed on the client host.
-- The CLI falls back to the project-local `pfchat/.env` based on the script path, which helps when the skill is invoked from another channel or working directory.
+- PfChat now uses `/home/openclaw/.openclaw/workspace/pfchat/.env` as the single project-local setup for both the repo CLI and the active OpenClaw skill.
 - `PFSENSE_HOST` must be only the hostname or IP. Do not include `https://` or URL paths.
 - `PFSENSE_API_KEY` must be a real key, not the example placeholder.
 - `PFSENSE_VERIFY_SSL` accepts `true/false`, `1/0`, `yes/no`, or `on/off`.
@@ -125,6 +125,7 @@ Notes:
 - `NTOPNG_VERIFY_SSL` accepts the same boolean forms as pfSense SSL verification.
 - When `NTOPNG_VERIFY_SSL=false`, PfChat suppresses noisy urllib3 TLS warnings so normal command output stays readable.
 - If ntopng returns the HTML login page instead of JSON, enable HTTP API auth in ntopng or generate a user authentication token and set `NTOPNG_AUTH_TOKEN`.
+- The active OpenClaw skill now ships with the same ntopng commands as the repo CLI, so there is no split capability surface anymore.
 - Do not commit real API keys, ntopng credentials, or ntopng tokens.
 
 ### 2. Run direct queries

@@ -42,6 +42,7 @@ Pendientes del proyecto, organizados por prioridad.
 - [x] Añadir soporte de alertas ntopng (globales + por host) con normalización de severidad
 - [x] Añadir resúmenes de aplicaciones/protocolos de host ntopng (L7) mediante un modelo de salida estable de PfChat
 - [x] Añadir parsing/normalización más rico para registros de alert-list y así resaltar hosts, severidades y familias de alertas sin exponer solo la estructura cruda de ntopng
+- [x] Mantener la skill activa de OpenClaw en paridad con el CLI del repo para los comandos de ntopng y la carga compartida de configuración
 
 ## Prioridad baja
 

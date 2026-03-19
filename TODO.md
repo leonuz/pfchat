@@ -16,6 +16,7 @@ Project backlog, organized by priority.
 - [x] Convert normalized ntopng alert epochs into ET in higher-level conversational summaries by default
 - [ ] Add ET/local-time rendering to other ntopng summary surfaces such as top talkers and active-host summaries where timestamps are shown
 - [ ] Add higher-level ntopng analytics views (network stats, security summary, host profile, traffic summary) that aggregate current capabilities into dashboard-like responses
+- [x] Keep the active OpenClaw skill in parity with the repo CLI for ntopng commands and shared config loading
 
 - [x] Add safe administrative firewall actions for blocking an IP/device using `draft -> preview -> apply -> audit` workflow
 - [x] Strengthen rollback using pfSense-native object identifiers where available instead of descriptive delete heuristics

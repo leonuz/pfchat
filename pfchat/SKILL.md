@@ -7,23 +7,29 @@ description: Query and analyze a pfSense firewall in real time through the pfSen
 
 Use this skill to turn pfSense REST API data into a live conversational security workflow inside OpenClaw.
 
-Keep the skill model-agnostic. Do not call Anthropic or any provider SDK directly. Fetch data from pfSense, then analyze and explain it with the current agent.
+Keep the skill model-agnostic. Do not call Anthropic or any provider SDK directly. Fetch data from pfSense and ntopng, then analyze and explain it with the current agent.
 
 ## Quick workflow
 
-1. Load connection details from environment variables or a local `.env` file.
+1. Load connection details from the shared `pfchat/.env` setup or inherited environment variables.
 2. Use `scripts/pfchat_query.py` to fetch only the data needed.
-3. If the user asks a broad question, start with `snapshot`.
-4. Summarize findings clearly, and flag anything risky or odd.
-5. If the user wants a reusable artifact, produce a Markdown report from the fetched JSON.
+3. If the user asks a broad firewall question, start with `snapshot`.
+4. If the user wants host-level traffic intelligence, pivot into the `ntop-*` commands.
+5. Summarize findings clearly, and flag anything risky or odd.
+6. If the user wants a reusable artifact, produce a Markdown report from the fetched JSON.
 
 ## Configuration
 
-Expect these variables in the environment or a `.env` file:
+Expect these variables in the environment or the shared project-local `.env` file at `/home/openclaw/.openclaw/workspace/pfchat/.env`:
 
 - `PFSENSE_HOST`
 - `PFSENSE_API_KEY`
 - `PFSENSE_VERIFY_SSL` (`true` or `false`)
+- `NTOPNG_BASE_URL`
+- `NTOPNG_USERNAME`
+- `NTOPNG_PASSWORD`
+- `NTOPNG_AUTH_TOKEN` (optional alternative to username/password)
+- `NTOPNG_VERIFY_SSL` (`true` or `false`)
 
 Example:
 
@@ -31,17 +37,22 @@ Example:
 PFSENSE_HOST=192.168.0.254
 PFSENSE_API_KEY=replace-me
 PFSENSE_VERIFY_SSL=false
+NTOPNG_BASE_URL=https://192.168.0.254:3000
+NTOPNG_USERNAME=admin
+NTOPNG_PASSWORD=replace-me
+NTOPNG_AUTH_TOKEN=
+NTOPNG_VERIFY_SSL=false
 ```
 
-`PFSENSE_VERIFY_SSL=false` still uses HTTPS. It only disables certificate trust validation, which is common for pfSense deployments using self-signed certificates or an internal CA not installed on the client host.
+`PFSENSE_VERIFY_SSL=false` and `NTOPNG_VERIFY_SSL=false` still use HTTPS. They only disable certificate trust validation, which is common for pfSense/ntopng deployments using self-signed certificates or an internal CA not installed on the client host.
 
-Prefer `.env` in the current working directory when the user is working inside a repo. Do not print secrets back to the user.
+Use `/home/openclaw/.openclaw/workspace/pfchat/.env` as the single PfChat setup. Do not maintain a separate active-skill-only `.env`. Do not print secrets back to the user.
 
 ## Entry points
 
 ### Live API queries
 
-Use `scripts/pfchat_query.py` for direct pfSense access.
+Use `scripts/pfchat_query.py` for direct pfSense and ntopng access.
 
 Common commands:
 
@@ -55,6 +66,13 @@ python3 skills/pfchat/scripts/pfchat_query.py health
 python3 skills/pfchat/scripts/pfchat_query.py rules
 python3 skills/pfchat/scripts/pfchat_query.py rules --filter descr__contains=OpenVPN
 python3 skills/pfchat/scripts/pfchat_query.py snapshot --limit 150
+python3 skills/pfchat/scripts/pfchat_query.py ntop-capabilities
+python3 skills/pfchat/scripts/pfchat_query.py ntop-hosts --ifid 0 --limit 50
+python3 skills/pfchat/scripts/pfchat_query.py ntop-host --host 192.168.0.95 --ifid 0
+python3 skills/pfchat/scripts/pfchat_query.py ntop-top-talkers --ifid 0 --direction local
+python3 skills/pfchat/scripts/pfchat_query.py ntop-alerts --ifid 0 --hours 24
+python3 skills/pfchat/scripts/pfchat_query.py ntop-host-apps --host 192.168.0.95 --ifid 0
+python3 skills/pfchat/scripts/pfchat_query.py ntop-network-stats --ifid 0 --hours 24 --limit 10
 ```
 
 ### Reusable Python module
@@ -121,6 +139,19 @@ Use `rules` when the user asks:
 
 Do not guess rule intent from name alone. Quote the relevant rule fields from the returned data.
 
+### 6. Pivot into ntopng host intelligence
+
+Use `ntop-hosts`, `ntop-host`, `ntop-top-talkers`, `ntop-alerts`, `ntop-host-apps`, and `ntop-network-stats` when the user asks:
+
+- which hosts are most active right now
+- what ntopng knows about a specific device
+- which devices are top talkers
+- whether ntopng has recent alerts for a host or interface
+- what applications or protocols a host is using
+- whether you can produce a network-activity summary beyond raw pfSense states
+
+Prefer pfSense for authoritative firewall/rule/state answers. Prefer ntopng for richer host activity, applications, and alert visibility.
+
 ## Schema-aware behavior
 
 PfChat should prefer the live OpenAPI schema at `/api/v2/schema/openapi` when available.
@@ -178,8 +209,11 @@ Read `references/endpoints.md` for endpoint fallback behavior and version notes.
 
 ## Resources
 
-- `scripts/pfchat_query.py` — main CLI entry point for live queries and snapshots
+- `scripts/pfchat_query.py` — main CLI entry point for live pfSense and ntopng queries
 - `scripts/pfsense_client.py` — reusable pfSense REST API client
+- `scripts/ntopng_client.py` — ntopng transport/auth client
+- `scripts/ntopng_pyapi_backend.py` — lightweight ntopng backend with installation-aware fallbacks
+- `scripts/ntopng_adapter.py` — normalized ntopng-to-PfChat adapter layer
 - `references/output-shapes.md` — expected high-level JSON output by command
 - `references/endpoints.md` — supported endpoints and fallback notes
 - `references/upstream-notes.md` — upstream pfrest/OpenAPI notes for future releases
