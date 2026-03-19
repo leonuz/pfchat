@@ -175,6 +175,170 @@ Examples:
 - verify impact
 - roll back if needed
 
+## Technical operating model
+
+### Data-source split
+
+PfChat intentionally uses different backends for different classes of answers.
+
+#### pfSense is the authoritative source for
+
+- firewall rules
+- live state-table data
+- filterlog / recent firewall events
+- interfaces, gateways, WAN status, and system health
+- device inventory exposed through ARP/DHCP endpoints
+- firewall writes such as aliases, rules, apply, rollback-related cleanup, and state deletion
+
+#### ntopng is the authoritative source for
+
+- top talkers and traffic ranking
+- per-host traffic profile
+- application / protocol visibility
+- network alerts and host alert context
+- higher-level traffic summaries when raw state-table output is too low-level
+
+#### Practical rule
+
+If the question is about **policy, enforcement, or firewall truth**, PfChat should lean on pfSense first.
+If the question is about **behavior, traffic shape, host activity, or application visibility**, PfChat should lean on ntopng first.
+
+### Correlation model
+
+PfChat is most useful when it correlates both sides instead of treating them as isolated tools.
+
+Typical correlation fields include:
+
+- IP address
+- hostname / FQDN
+- local inventory name
+- interface / VLAN context
+- host identity normalized from pfSense inventory plus ntopng host records
+
+This is why PfChat can answer operator questions more cleanly than using pfSense or ntopng alone.
+
+## Investigation playbooks
+
+### Playbook: what is a client doing right now?
+
+Goal: understand current activity for one LAN client with both firewall and traffic context.
+
+Suggested sequence:
+
+```bash
+python3 pfchat/scripts/pfchat_query.py devices
+python3 pfchat/scripts/pfchat_query.py connections --host 192.168.0.95 --limit 100
+python3 pfchat/scripts/pfchat_query.py logs --host 192.168.0.95 --limit 100
+python3 pfchat/scripts/pfchat_query.py ntop-host --host 192.168.0.95 --ifid 0
+python3 pfchat/scripts/pfchat_query.py ntop-host-apps --host 192.168.0.95 --ifid 0
+python3 pfchat/scripts/pfchat_query.py ntop-alerts --host 192.168.0.95 --ifid 0 --hours 24
+```
+
+What each step answers:
+
+- `devices` confirms host identity and local interface context
+- `connections` shows live state-table activity from the firewall point of view
+- `logs` shows recent blocked or notable events
+- `ntop-host` shows host-level traffic profile
+- `ntop-host-apps` shows application/protocol mix
+- `ntop-alerts` shows whether the host triggered recent attention-worthy events
+
+### Playbook: triage suspicious firewall activity
+
+Goal: decide whether recent blocked activity is harmless noise, misconfiguration, or something worth containment.
+
+Suggested sequence:
+
+```bash
+python3 pfchat/scripts/pfchat_query.py snapshot --limit 150
+python3 pfchat/scripts/pfchat_query.py logs --limit 200
+python3 pfchat/scripts/pfchat_query.py ntop-alerts --ifid 0 --hours 24
+python3 pfchat/scripts/pfchat_query.py ntop-top-talkers --ifid 0 --direction local
+```
+
+What to look for:
+
+- repeated blocks from one source
+- unusual outbound destinations
+- one host dominating traffic unexpectedly
+- alert concentration around one client or service
+- mismatch between firewall policy intent and observed traffic
+
+### Playbook: investigate the top talker
+
+Goal: explain why one host is currently dominant on the network.
+
+Suggested sequence:
+
+```bash
+python3 pfchat/scripts/pfchat_query.py ntop-top-talkers --ifid 0 --direction local
+python3 pfchat/scripts/pfchat_query.py ntop-host --host <host-or-ip> --ifid 0
+python3 pfchat/scripts/pfchat_query.py ntop-host-apps --host <host-or-ip> --ifid 0
+python3 pfchat/scripts/pfchat_query.py connections --host <host-or-ip> --limit 100
+```
+
+This lets you explain not only that a host is noisy, but whether that noise is:
+
+- expected backup/streaming activity
+- update traffic
+- browsing / SaaS activity
+- suspicious egress
+- a host worth temporarily constraining
+
+## Administrative playbooks
+
+### Draft / preview / apply / rollback
+
+PfChat administrative flows are intentionally staged.
+
+Typical lifecycle:
+
+1. create a draft for a block action
+2. review the generated alias/rule proposal
+3. apply only with explicit confirmation
+4. validate impact after apply
+5. roll back using stored metadata if needed
+
+Example:
+
+```bash
+python3 pfchat/scripts/pfchat_query.py block-device --target sniperhack
+python3 pfchat/scripts/pfchat_query.py draft-show --draft-id <id>
+python3 pfchat/scripts/pfchat_query.py apply-draft --draft-id <id> --confirm
+python3 pfchat/scripts/pfchat_query.py rollback-draft --draft-id <id> --confirm
+```
+
+### Quick egress control
+
+Use the quick egress path when you need immediate, test-oriented containment for a specific host and protocol/port combination.
+
+Example:
+
+```bash
+python3 pfchat/scripts/pfchat_query.py quick-egress-block --target sniperhack --proto tcp --port 443
+python3 pfchat/scripts/pfchat_query.py quick-egress-unblock --target sniperhack --proto tcp --port 443
+```
+
+This path is useful when:
+
+- you want immediate effect during live investigation
+- you do not want to redesign long-term LAN policy yet
+- you need to validate whether a single outbound dependency is the issue
+
+### When to use permanent vs quick control
+
+Use **draft/apply/rollback** when:
+
+- you want a managed, reviewable firewall change
+- you expect to preserve the change longer than a short test
+- you want stored metadata for cleanup and rollback
+
+Use **quick egress block/unblock** when:
+
+- you need temporary containment during investigation
+- timing matters more than long-term policy structure
+- you want immediate effect plus state cleanup
+
 ## Installing the pfSense REST API
 
 This section matters because **the pfSense API is not native by default**.

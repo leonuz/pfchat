@@ -176,6 +176,170 @@ Ejemplos:
 - verificar impacto
 - hacer rollback si hace falta
 
+## Modelo técnico de operación
+
+### Separación de fuentes de datos
+
+PfChat usa deliberadamente backends distintos según el tipo de respuesta.
+
+#### pfSense es la fuente autoritativa para
+
+- reglas del firewall
+- datos live de la tabla de estados
+- filterlog / eventos recientes del firewall
+- interfaces, gateways, estado WAN y salud del sistema
+- inventario de dispositivos expuesto vía ARP/DHCP
+- escrituras de firewall como aliases, reglas, apply, cleanup relacionado con rollback y borrado de estados
+
+#### ntopng es la fuente autoritativa para
+
+- top talkers y ranking de tráfico
+- perfil de tráfico por host
+- visibilidad de aplicaciones / protocolos
+- alertas de red y contexto de alertas por host
+- resúmenes de tráfico de más alto nivel cuando la tabla de estados por sí sola es demasiado cruda
+
+#### Regla práctica
+
+Si la pregunta trata sobre **política, enforcement o verdad del firewall**, PfChat debe apoyarse primero en pfSense.
+Si la pregunta trata sobre **comportamiento, forma del tráfico, actividad por host o visibilidad de aplicaciones**, PfChat debe apoyarse primero en ntopng.
+
+### Modelo de correlación
+
+PfChat es más útil cuando correlaciona ambos lados en vez de tratarlos como herramientas aisladas.
+
+Campos típicos de correlación:
+
+- dirección IP
+- hostname / FQDN
+- nombre local del inventario
+- contexto de interfaz / VLAN
+- identidad de host normalizada a partir del inventario de pfSense más registros de host de ntopng
+
+Por eso PfChat puede responder preguntas operativas mejor que usar pfSense o ntopng por separado.
+
+## Playbooks de investigación
+
+### Playbook: ¿qué está haciendo un cliente ahora mismo?
+
+Objetivo: entender la actividad actual de un cliente LAN con contexto tanto de firewall como de tráfico.
+
+Secuencia sugerida:
+
+```bash
+python3 pfchat/scripts/pfchat_query.py devices
+python3 pfchat/scripts/pfchat_query.py connections --host 192.168.0.95 --limit 100
+python3 pfchat/scripts/pfchat_query.py logs --host 192.168.0.95 --limit 100
+python3 pfchat/scripts/pfchat_query.py ntop-host --host 192.168.0.95 --ifid 0
+python3 pfchat/scripts/pfchat_query.py ntop-host-apps --host 192.168.0.95 --ifid 0
+python3 pfchat/scripts/pfchat_query.py ntop-alerts --host 192.168.0.95 --ifid 0 --hours 24
+```
+
+Qué responde cada paso:
+
+- `devices` confirma identidad del host y contexto de interfaz local
+- `connections` muestra la actividad live desde la perspectiva de la tabla de estados del firewall
+- `logs` muestra eventos bloqueados o relevantes recientes
+- `ntop-host` muestra el perfil de tráfico del host
+- `ntop-host-apps` muestra la mezcla de aplicaciones/protocolos
+- `ntop-alerts` muestra si el host disparó eventos recientes que merezcan atención
+
+### Playbook: triage de actividad sospechosa en firewall
+
+Objetivo: decidir si actividad bloqueada reciente es ruido, mala configuración o algo que valga contener.
+
+Secuencia sugerida:
+
+```bash
+python3 pfchat/scripts/pfchat_query.py snapshot --limit 150
+python3 pfchat/scripts/pfchat_query.py logs --limit 200
+python3 pfchat/scripts/pfchat_query.py ntop-alerts --ifid 0 --hours 24
+python3 pfchat/scripts/pfchat_query.py ntop-top-talkers --ifid 0 --direction local
+```
+
+Qué buscar:
+
+- bloqueos repetidos desde una misma fuente
+- destinos salientes inusuales
+- un host dominando tráfico sin explicación clara
+- concentración de alertas alrededor de un cliente o servicio
+- desalineación entre la intención de la política y el tráfico observado
+
+### Playbook: investigar el top talker
+
+Objetivo: explicar por qué un host domina actualmente la red.
+
+Secuencia sugerida:
+
+```bash
+python3 pfchat/scripts/pfchat_query.py ntop-top-talkers --ifid 0 --direction local
+python3 pfchat/scripts/pfchat_query.py ntop-host --host <host-o-ip> --ifid 0
+python3 pfchat/scripts/pfchat_query.py ntop-host-apps --host <host-o-ip> --ifid 0
+python3 pfchat/scripts/pfchat_query.py connections --host <host-o-ip> --limit 100
+```
+
+Esto permite explicar no solo que un host está ruidoso, sino si ese ruido es:
+
+- backup/streaming esperado
+- tráfico de updates
+- browsing / SaaS normal
+- egress sospechoso
+- un host que convenga contener temporalmente
+
+## Playbooks administrativos
+
+### Draft / preview / apply / rollback
+
+Los flujos administrativos de PfChat están deliberadamente escalonados.
+
+Ciclo típico:
+
+1. crear un draft para una acción de bloqueo
+2. revisar la propuesta generada de alias/rule
+3. aplicar solo con confirmación explícita
+4. validar impacto después del apply
+5. hacer rollback con metadata almacenada si hace falta
+
+Ejemplo:
+
+```bash
+python3 pfchat/scripts/pfchat_query.py block-device --target sniperhack
+python3 pfchat/scripts/pfchat_query.py draft-show --draft-id <id>
+python3 pfchat/scripts/pfchat_query.py apply-draft --draft-id <id> --confirm
+python3 pfchat/scripts/pfchat_query.py rollback-draft --draft-id <id> --confirm
+```
+
+### Control rápido de egress
+
+Usa la ruta quick egress cuando necesitas contención inmediata y orientada a pruebas para un host y una combinación de protocolo/puerto específicos.
+
+Ejemplo:
+
+```bash
+python3 pfchat/scripts/pfchat_query.py quick-egress-block --target sniperhack --proto tcp --port 443
+python3 pfchat/scripts/pfchat_query.py quick-egress-unblock --target sniperhack --proto tcp --port 443
+```
+
+Esta ruta sirve cuando:
+
+- quieres efecto inmediato durante una investigación live
+- todavía no quieres rediseñar una política LAN de largo plazo
+- necesitas validar si una dependencia saliente concreta es el problema
+
+### Cuándo usar control permanente vs rápido
+
+Usa **draft/apply/rollback** cuando:
+
+- quieres un cambio de firewall gestionado y revisable
+- esperas conservar el cambio más allá de una prueba corta
+- quieres metadata persistida para cleanup y rollback
+
+Usa **quick egress block/unblock** cuando:
+
+- necesitas contención temporal durante investigación
+- el timing importa más que la estructura de política a largo plazo
+- quieres efecto inmediato más cleanup de estados
+
 ## Instalación de la REST API de pfSense
 
 Esta sección importa porque **la API de pfSense no viene nativa por defecto**.
