@@ -4,95 +4,276 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![OpenClaw](https://img.shields.io/badge/OpenClaw-skill-blue)](https://docs.openclaw.ai)
 
-PfChat es una skill de OpenClaw para consultar y analizar un firewall pfSense en tiempo real a través de la REST API de pfSense.
+PfChat es un flujo operacional y de seguridad, guiado por API, para **pfSense** más **ntopng**.
 
-Es agnóstica al modelo: la skill obtiene datos vivos desde pfSense y deja el análisis al agente actual de OpenClaw, sin amarrarse a un proveedor específico de LLM.
+Habla directamente con:
 
-## Qué hace
+- la **REST API de pfSense** para estado autoritativo del firewall, reglas, interfaces, gateways, logs, inventario de dispositivos y cambios administrativos controlados
+- la **API de ntopng** para visibilidad de tráfico por host, top talkers, alertas, aplicaciones y contexto de actividad de red
 
-- Consulta dispositivos conectados usando ARP/DHCP cuando la API los expone
-- Hace fallback a hosts activos inferidos desde `firewall/states` cuando ARP/DHCP no está disponible
-- Inspecciona estados activos del firewall y conexiones en vivo
-- Revisa actividad reciente del firewall
-- Verifica estado de interfaces, gateways y sistema
-- Revisa reglas del firewall
-- Genera un snapshot útil para triage de seguridad
-- Añade una capa compacta de `summary` dentro del snapshot para respuestas y reportes más rápidos
-- Descubre capacidades soportadas desde el OpenAPI schema en vivo
-- Cachea localmente el OpenAPI schema para reducir fetches repetidos
-- Consulta ntopng vía su REST API para complementar la visibilidad de hosts que pfSense no resume por sí solo
-- Normaliza hosts, alertas y top talkers de ntopng a JSON nativo de PfChat
+En la práctica, PfChat está pensado para responder preguntas como:
 
-## Prerrequisitos en pfSense
+- ¿qué está haciendo este cliente ahora mismo?
+- ¿qué tráfico está generando un host?
+- ¿qué fue bloqueado recientemente?
+- ¿cuáles son los top talkers?
+- ¿qué aplicaciones está usando este dispositivo?
+- ¿está ocurriendo algo sospechoso en el firewall?
+- ¿puedo bloquear este host o restringir su tráfico saliente de forma segura?
 
-Antes de que PfChat pueda funcionar, el paquete REST API de pfSense debe estar instalado y accesible en el firewall.
+PfChat es agnóstico al modelo: obtiene datos vivos desde pfSense y ntopng, y luego deja el análisis conversacional al agente actual de OpenClaw.
 
-### 1. Instalar el paquete REST API de pfSense
+## Qué es realmente PfChat
 
-PfChat depende del paquete upstream **pfSense-pkg-RESTAPI**.
+PfChat no es solo un lector de pfSense ni solo un wrapper de ntopng.
 
-Jerarquía de referencias:
-- proyecto upstream oficial (fuente canónica): <https://github.com/pfrest/pfSense-pkg-RESTAPI>
-- guía publicada de instalación: <https://pfrest.org/INSTALL_AND_CONFIG/>
-- guía publicada de autenticación: <https://pfrest.org/AUTHENTICATION_AND_AUTHORIZATION/>
-- guía publicada de Swagger/OpenAPI: <https://pfrest.org/SWAGGER_AND_OPENAPI/>
-- walkthrough práctico de instalación usado durante este proyecto: <https://www.youtube.com/watch?v=inqMEOEVtao>
+Combina:
 
-Comandos típicos de instalación según la documentación upstream:
+- **pfSense** para verdad autoritativa del firewall y administración
+- **ntopng** para inteligencia de red y comportamiento por host
+- **OpenClaw** para workflows de investigación, resúmenes e interacción orientada al operador
 
-Instalar en pfSense CE:
+Piénsalo así:
+
+- **pfSense** te dice qué sabe y qué está aplicando el firewall
+- **ntopng** te dice qué están haciendo los hosts en la red
+- **PfChat** junta ambas cosas en una sola interfaz operacional
+
+## Arquitectura
+
+```text
++-----------------------------+
+| OpenClaw / CLI / Operador   |
++-------------+---------------+
+              |
+              v
++-----------------------------+
+|           PfChat            |
+| consultar / correlacionar / |
+| actuar                      |
++-------------+---------------+
+              |
+      +-------+-------+         +--------+--------+
+      | pfSense REST  |         |   API de ntopng |
+      | API           |         | (tráfico, hosts,|
+      |               |         | alertas, apps)  |
+      +-------+-------+         +--------+--------+
+              |                          |
+              v                          v
+ estado firewall / reglas /     actividad por host / top talkers /
+ logs / interfaces / apply      apps / alertas / contexto de tráfico
+```
+
+## Capacidades principales
+
+### 1. Visibilidad
+
+Usa PfChat para inspeccionar estado vivo de red y firewall:
+
+- dispositivos conectados
+- estados activos del firewall
+- eventos recientes bloqueados o permitidos
+- salud de interfaces y gateways
+- visibilidad de WAN / IP pública
+- reglas del firewall
+- top talkers
+- hosts activos en ntopng
+- resúmenes de apps/protocolos por host
+- alertas recientes y resúmenes de actividad
+
+### 2. Investigación
+
+Usa PfChat para preguntas orientadas a seguridad como:
+
+- ¿qué está haciendo `iphoneLeo` ahora mismo?
+- ¿qué cliente está generando más tráfico?
+- ¿qué bloqueó el firewall en la última hora?
+- ¿ntopng muestra algo sospechoso para este host?
+- ¿qué apps está usando este cliente?
+- ¿este host habla con destinos o puertos raros?
+- ¿el firewall está sano, sobrecargado o bloqueando algo importante?
+
+### 3. Administración
+
+PfChat también es una superficie operacional de control para pfSense.
+
+Puede realizar acciones administrativas controladas como:
+
+- crear drafts de bloqueo para IPs o dispositivos
+- aplicar drafts con confirmación
+- revertir cambios gestionados
+- listar y limpiar objetos creados por PfChat
+- ejecutar bloqueos/desbloqueos rápidos de egress por host
+
+Las acciones administrativas están deliberadamente protegidas mediante flujos de preview / confirm / rollback en vez de mutaciones ciegas.
+
+## Por qué importa juntar pfSense + ntopng
+
+pfSense y ntopng resuelven partes distintas del problema.
+
+### pfSense es mejor para
+
+- reglas
+- enforcement
+- interfaces y gateways
+- logs del firewall
+- descubrimiento de dispositivos vía ARP/DHCP cuando está expuesto
+- escrituras controladas como cambios de reglas o aliases
+
+### ntopng es mejor para
+
+- top talkers
+- comportamiento de tráfico por host
+- resúmenes de aplicaciones/protocolos por host
+- alertas recientes y contexto de actividad de red
+- responder “¿qué está haciendo realmente este cliente?”
+
+### PfChat usa ambos
+
+Workflow típico:
+
+1. usa **pfSense** para confirmar host, interfaz, reglas, estados y actividad bloqueada
+2. usa **ntopng** para entender volumen de tráfico, aplicaciones, comportamiento y alertas
+3. usa **PfChat** para resumir hallazgos o ejecutar una acción administrativa segura
+
+## Workflows enfocados en seguridad
+
+### Investigar un cliente
+
+Ejemplos:
+
+- identificar el host en el inventario de pfSense
+- inspeccionar estados actuales del firewall para ese host
+- revisar logs recientes del firewall
+- pivotar a detalles del host en ntopng
+- revisar aplicaciones principales y alertas
+- decidir si conviene monitorear, bloquear o limitar egress
+
+### Encontrar top talkers
+
+Ejemplos:
+
+- usar vistas de top talkers de ntopng cuando estén soportadas
+- degradar limpiamente cuando algunos endpoints de ntopng no estén disponibles
+- correlacionar top talkers con identidad del dispositivo en pfSense y contexto de interfaz
+
+### Revisar tráfico bloqueado
+
+Ejemplos:
+
+- inspeccionar actividad reciente de filterlog en pfSense
+- aislar bloqueos repetidos de una misma fuente
+- compararlo con alertas de ntopng o comportamiento por host
+- decidir si es ruido, mala configuración o actividad sospechosa
+
+### Aplicar una acción segura de firewall
+
+Ejemplos:
+
+- crear draft de bloqueo de un host
+- previsualizar el plan de rule/alias
+- confirmar el cambio
+- verificar impacto
+- hacer rollback si hace falta
+
+## Instalación de la REST API de pfSense
+
+Esta sección importa porque **la API de pfSense no viene nativa por defecto**.
+PfChat depende del paquete upstream **pfSense-pkg-RESTAPI** instalado en el firewall.
+
+### 1. Instalar el paquete
+
+Proyecto upstream canónico:
+- <https://github.com/pfrest/pfSense-pkg-RESTAPI>
+
+Documentación útil upstream:
+- instalación: <https://pfrest.org/INSTALL_AND_CONFIG/>
+- autenticación: <https://pfrest.org/AUTHENTICATION_AND_AUTHORIZATION/>
+- Swagger/OpenAPI: <https://pfrest.org/SWAGGER_AND_OPENAPI/>
+
+Walkthrough práctico usado durante este proyecto:
+- <https://www.youtube.com/watch?v=inqMEOEVtao>
+
+Comando típico de instalación para pfSense CE:
 
 ```bash
 pkg-static add https://github.com/pfrest/pfSense-pkg-RESTAPI/releases/latest/download/pfSense-2.8.1-pkg-RESTAPI.pkg
 ```
 
-Instalar en pfSense Plus:
+Comando típico de instalación para pfSense Plus:
 
 ```bash
 pkg-static -C /dev/null add https://github.com/pfrest/pfSense-pkg-RESTAPI/releases/latest/download/pfSense-25.11-pkg-RESTAPI.pkg
 ```
 
 Notas importantes:
-- Elige el paquete que corresponda a tu versión exacta de pfSense.
-- Después de upgrades de pfSense, los paquetes no oficiales pueden eliminarse, así que puede ser necesario reinstalar REST API.
-- En este proyecto, PfChat fue validado contra una instalación real de pfSense que expone `/api/v2/schema/openapi`.
 
-### 2. Configurar la REST API en pfSense
+- usa el paquete que corresponda a tu versión exacta de pfSense
+- los paquetes no oficiales pueden desaparecer después de upgrades de pfSense, así que puede tocar reinstalarlo
+- PfChat fue validado contra una instancia real de pfSense que expone `/api/v2/schema/openapi`
 
-Después de instalar, verifica estas cosas en pfSense:
+### 2. Configurar la API en pfSense
+
+Después de instalar, verifica:
 
 - que exista `System -> REST API` en el webConfigurator
-- que la REST API esté habilitada/configurada según lo que necesites
+- que la REST API esté habilitada/configurada correctamente
 - que el método de autenticación que vas a usar esté permitido
-- que la cuenta usada para generar la API key tenga los privilegios necesarios para los endpoints que quieres consultar
+- que la cuenta detrás de la API key tenga los permisos que necesitas
 
 ### 3. Crear una API key
 
-PfChat usa por defecto **API key authentication** a través del header `X-API-Key`.
+PfChat usa por defecto **autenticación por API key** para pfSense mediante el header `X-API-Key`.
 
-Según la documentación upstream, las API keys se pueden crear desde:
+Según la documentación upstream, las claves se gestionan desde:
+
 - `System -> REST API -> Keys`
 
 Notas importantes:
-- Las API keys heredan los privilegios del usuario que las creó.
-- Trátala como un secreto.
-- Si se expone, revócala y crea una nueva.
 
-### 4. Verificar la API antes de usar PfChat
+- la clave hereda los privilegios del usuario que la creó
+- trátala como un secreto
+- si se expone, revócala y genera una nueva
 
-Chequeos útiles antes de culpar a PfChat:
+### 4. Validar la API antes de culpar a PfChat
+
+Chequeos útiles:
 
 - confirma que la API responde en `https://<pfsense>/api/v2/...`
 - confirma que tu API key funciona
-- confirma que el OpenAPI schema en vivo responde en:
-  - `/api/v2/schema/openapi`
+- confirma que el OpenAPI schema en vivo responde en `/api/v2/schema/openapi`
 - confirma que los endpoints que te importan existen en ese schema
 
-Si `/api/v2/schema/openapi` funciona, PfChat puede usar descubrimiento basado en schema y adaptarse mejor a esa instalación.
+Si `/api/v2/schema/openapi` responde, PfChat puede usar descubrimiento basado en schema y adaptarse mucho mejor a esa instalación.
 
-## Inicio rápido
+## Qué espera PfChat de ntopng
 
-### 1. Configura el acceso a pfSense
+PfChat espera una instancia accesible de ntopng consultable por HTTP(S).
+En muchos entornos esa será la instancia de ntopng integrada con o adyacente a pfSense.
+
+PfChat usa ntopng para:
+
+- hosts activos
+- top talkers
+- perfiles de host
+- aplicaciones/protocolos por host
+- alertas
+- resúmenes de actividad de red
+
+Notas importantes:
+
+- algunos endpoints de ntopng varían según versión, edición o comportamiento local
+- algunos endpoints de top talkers pueden ser Pro-only
+- PfChat incluye fallbacks y normalización para mantener una salida estable aunque el comportamiento de ntopng varíe
+- si ntopng devuelve HTML de login en vez de JSON, habilita API auth o usa un token de auth
+
+## Configuración
+
+PfChat usa este archivo como setup local único del proyecto:
+
+- `/home/openclaw/.openclaw/workspace/pfchat/.env`
+
+Créalo desde el ejemplo:
 
 ```bash
 cp .env.example .env
@@ -104,34 +285,52 @@ Ejemplo:
 PFSENSE_HOST=192.168.0.254
 PFSENSE_API_KEY=replace-me
 PFSENSE_VERIFY_SSL=false
+
+NTOPNG_BASE_URL=https://192.168.0.254:3000
+NTOPNG_USERNAME=admin
+NTOPNG_PASSWORD=replace-me
+NTOPNG_AUTH_TOKEN=
+NTOPNG_VERIFY_SSL=false
 ```
 
-Notas:
-- `PFSENSE_VERIFY_SSL=false` mantiene HTTPS activo; solo desactiva la validación de confianza del certificado.
-- Esto es normal cuando pfSense usa certificado autofirmado o una CA interna que el host cliente no tiene instalada.
-- PfChat ahora usa `/home/openclaw/.openclaw/workspace/pfchat/.env` como setup único del proyecto tanto para el CLI del repo como para la skill activa de OpenClaw.
-- `PFSENSE_HOST` debe ser solo el hostname o la IP. No incluyas `https://` ni paths.
-- `PFSENSE_API_KEY` debe ser una clave real, no el placeholder del ejemplo.
-- `PFSENSE_VERIFY_SSL` acepta `true/false`, `1/0`, `yes/no` u `on/off`.
-- `NTOPNG_BASE_URL` debe ser una URL completa como `https://192.168.0.254:3000`.
-- `NTOPNG_USERNAME` / `NTOPNG_PASSWORD` se usan para Basic Auth contra endpoints REST de ntopng cuando HTTP API auth está habilitado en ntopng.
-- `NTOPNG_AUTH_TOKEN` es una alternativa opcional que tiene prioridad sobre usuario/contraseña cuando está presente.
-- `NTOPNG_VERIFY_SSL` acepta las mismas formas booleanas que la verificación SSL de pfSense.
-- Cuando `NTOPNG_VERIFY_SSL=false`, PfChat suprime warnings ruidosos de urllib3 para mantener la salida normal legible.
-- Si ntopng devuelve la página HTML de login en vez de JSON, habilita HTTP API auth en ntopng o genera un token de autenticación de usuario y configúralo en `NTOPNG_AUTH_TOKEN`.
-- No subas claves reales al repositorio.
-- La skill activa de OpenClaw ahora incluye los mismos comandos de ntopng que el CLI del repo, así que ya no hay una superficie de capacidades dividida.
+### Variables de pfSense
 
-### 2. Ejecuta consultas directas
+- `PFSENSE_HOST` — solo host o IP, sin `https://` ni paths
+- `PFSENSE_API_KEY` — API key real, no el placeholder
+- `PFSENSE_VERIFY_SSL` — acepta `true/false`, `1/0`, `yes/no`, `on/off`
+
+### Variables de ntopng
+
+- `NTOPNG_BASE_URL` — URL completa como `https://192.168.0.254:3000`
+- `NTOPNG_USERNAME` / `NTOPNG_PASSWORD` — usados para Basic Auth cuando HTTP API auth está habilitado
+- `NTOPNG_AUTH_TOKEN` — alternativa opcional con prioridad sobre usuario/contraseña si está presente
+- `NTOPNG_VERIFY_SSL` — acepta las mismas formas booleanas que pfSense
+
+### Nota TLS
+
+`PFSENSE_VERIFY_SSL=false` y `NTOPNG_VERIFY_SSL=false` siguen usando HTTPS.
+Solo desactivan la validación de confianza del certificado, algo común con certificados autofirmados o CAs internas no instaladas en el cliente.
+
+### Nota importante de configuración
+
+PfChat ahora usa la misma setup local en ambas superficies:
+
+- el CLI del repo
+- la skill activa de OpenClaw
+
+Ya no existe la separación donde ntopng vivía en una superficie y no en la otra.
+
+No subas API keys, passwords ni tokens reales al repositorio.
+
+## Inicio rápido
+
+### Ejecutar consultas directas por CLI
 
 ```bash
 python3 pfchat/scripts/pfchat_query.py capabilities
 python3 pfchat/scripts/pfchat_query.py devices
 python3 pfchat/scripts/pfchat_query.py health
 python3 pfchat/scripts/pfchat_query.py snapshot --limit 150
-python3 pfchat/scripts/pfchat_query.py --once compact
-python3 pfchat/scripts/pfchat_query.py --once wan
-python3 pfchat/scripts/pfchat_query.py --once blocked
 python3 pfchat/scripts/pfchat_query.py ntop-capabilities
 python3 pfchat/scripts/pfchat_query.py ntop-hosts --ifid 0 --limit 50
 python3 pfchat/scripts/pfchat_query.py ntop-host --host 192.168.0.95 --ifid 0
@@ -141,82 +340,104 @@ python3 pfchat/scripts/pfchat_query.py ntop-host-apps --host 192.168.0.95 --ifid
 python3 pfchat/scripts/pfchat_query.py ntop-network-stats --ifid 0 --hours 24 --limit 10
 ```
 
-### 3. Úsala desde OpenClaw
+### Usarlo desde OpenClaw
 
-Prompts típicos:
+Ejemplos:
 
-- "revisa qué dispositivos están conectados al pfSense"
-- "mira si hay algo sospechoso en mi firewall"
-- "qué está haciendo iphoneLeo ahora mismo"
-- "cuál es mi dirección WAN"
-- "muéstrame reglas de firewall relacionadas con OpenVPN"
-- "muéstrame hosts activos en ntopng"
-- "qué sabe ntopng sobre 192.168.0.160"
-- "muéstrame los top talkers de ntopng"
-- "muéstrame alertas de ntopng de las últimas 24 horas"
-- "qué aplicaciones está usando ferpad.uzc en ntopng"
+- `revisa qué dispositivos están conectados al pfSense`
+- `mira si hay algo sospechoso en mi firewall`
+- `qué está haciendo iphoneLeo ahora mismo`
+- `cuál es mi dirección WAN`
+- `muéstrame reglas de firewall relacionadas con OpenVPN`
+- `muéstrame hosts activos en ntopng`
+- `qué sabe ntopng sobre 192.168.0.160`
+- `muéstrame los top talkers de ntopng`
+- `muéstrame alertas de ntopng de las últimas 24 horas`
+- `qué aplicaciones está usando 192.168.0.95 en ntopng`
 
-## Integración con ntopng
+## Comandos por categoría
 
-PfChat también puede consultar ntopng para complementar la visibilidad de pfSense.
+### Estado y visibilidad de pfSense
 
-Capacidades actualmente soportadas:
+- `capabilities`
+- `devices`
+- `connections`
+- `logs`
+- `interfaces`
+- `health`
+- `rules`
+- `snapshot`
+
+### Inteligencia con ntopng
+
 - `ntop-capabilities`
 - `ntop-hosts`
 - `ntop-host`
 - `ntop-top-talkers`
 - `ntop-alerts`
 - `ntop-host-apps`
+- `ntop-network-stats`
 
-Notas importantes:
-- PfChat usa un backend ligero estilo Python API para ntopng, con fallbacks prácticos para esta instalación real.
-- Si un endpoint de `top talkers` es Pro-only, PfChat cae a un ranking por bytes de `active hosts`.
-- Las alertas de ntopng prefieren endpoints `alert/list`, que resultaron más confiables aquí que `alert/top`.
-- Los timestamps relevantes de alertas y resúmenes de host se renderizan en hora del este (ET).
-- Si `NTOPNG_VERIFY_SSL=false`, PfChat suprime warnings ruidosos de urllib3 para mantener la salida limpia.
+### Acciones administrativas seguras
 
-## Ejemplo de salida
+- `block-ip`
+- `block-device`
+- `block-egress-port`
+- `block-egress-proto`
+- `apply-draft`
+- `rollback-draft`
+- `quick-egress-block`
+- `quick-egress-unblock`
+- `unblock-ip`
+- `unblock-device`
+- `pfchat-managed-list`
+- `pfchat-managed-cleanup`
 
-### Capacidades
+## Modelo de administración segura
 
-```json
-{
-  "openapi_available": true,
-  "capabilities": {
-    "devices_arp": true,
-    "devices_dhcp": true,
-    "connections": true,
-    "logs_firewall": true,
-    "rules": true,
-    "interfaces": true,
-    "system_status": true,
-    "gateways": true
-  }
-}
+PfChat soporta cambios administrativos reales sobre pfSense, pero está diseñado alrededor de guardrails:
+
+- draft primero
+- preview antes del apply
+- confirm explícito para cambios live
+- soporte de rollback cuando aplica
+- soporte de cleanup de objetos gestionados
+- validaciones basadas en schema antes de usar rutas de escritura
+
+Esto importa porque PfChat no es solo para observar. También está pensado para ser útil durante operaciones reales de firewall.
+
+## Workflows de ejemplo
+
+### ¿Qué está haciendo este host?
+
+```bash
+python3 pfchat/scripts/pfchat_query.py connections --host 192.168.0.95 --limit 100
+python3 pfchat/scripts/pfchat_query.py logs --host 192.168.0.95 --limit 100
+python3 pfchat/scripts/pfchat_query.py ntop-host --host 192.168.0.95 --ifid 0
+python3 pfchat/scripts/pfchat_query.py ntop-host-apps --host 192.168.0.95 --ifid 0
 ```
 
-### Health / WAN
+### Mostrar top talkers y alertas recientes
 
-```json
-{
-  "gateways": [
-    {
-      "name": "WAN_DHCP",
-      "srcip": "142.197.33.220",
-      "monitorip": "142.197.33.1",
-      "status": "online"
-    }
-  ],
-  "interfaces": [
-    {
-      "name": "wan",
-      "descr": "WAN",
-      "ipaddr": "142.197.33.220",
-      "gateway": "142.197.33.1",
-      "status": "up"
-    }
-  ]
-}
+```bash
+python3 pfchat/scripts/pfchat_query.py ntop-top-talkers --ifid 0 --direction local
+python3 pfchat/scripts/pfchat_query.py ntop-alerts --ifid 0 --hours 24
+```
+
+### Bloquear un host de forma segura
+
+```bash
+python3 pfchat/scripts/pfchat_query.py block-device --target sniperhack
+python3 pfchat/scripts/pfchat_query.py apply-draft --draft-id <id>
+python3 pfchat/scripts/pfchat_query.py apply-draft --draft-id <id> --confirm
+python3 pfchat/scripts/pfchat_query.py rollback-draft --draft-id <id> --confirm
+```
+
+### Aplicar un bloqueo rápido de egress por host
+
+```bash
+python3 pfchat/scripts/pfchat_query.py quick-egress-block --target sniperhack --proto tcp --port 443
+python3 pfchat/scripts/pfchat_query.py quick-egress-unblock --target sniperhack --proto tcp --port 443
 ```
 
 ## Estructura del repositorio
@@ -224,165 +445,48 @@ Notas importantes:
 ```text
 pfchat/
 ├── README.md
+├── README.en.md
 ├── README.es.md
-├── TODO.md
-├── TODO.es.md
 ├── CHANGELOG.md
+├── CHANGELOG.en.md
 ├── CHANGELOG.es.md
-├── LICENSE
-├── .gitignore
+├── TODO.md
+├── TODO.en.md
+├── TODO.es.md
+├── ROADMAP.md
+├── ROADMAP.es.md
+├── docs/
+│   └── unification-2026-03-19.md
 ├── .env.example
-├── dist/
-│   └── pfchat.skill
-└── pfchat/
-    ├── SKILL.md
-    ├── scripts/
-    │   ├── pfchat_query.py
-    │   └── pfsense_client.py
-    └── references/
-        ├── endpoints.md
-        ├── upstream-notes.md
-        └── investigation-patterns.md
+├── pfchat/
+│   ├── SKILL.md
+│   ├── scripts/
+│   │   ├── pfchat_query.py
+│   │   ├── pfsense_client.py
+│   │   ├── ntopng_client.py
+│   │   ├── ntopng_adapter.py
+│   │   └── ntopng_pyapi_backend.py
+│   └── references/
+│       ├── endpoints.md
+│       ├── output-shapes.md
+│       ├── upstream-notes.md
+│       ├── investigation-patterns.md
+│       └── investigation-examples.md
+└── tests/
 ```
 
-## Acciones seguras de firewall
+## Notas
 
-PfChat ahora incluye acciones administrativas reales de firewall para flujos de bloqueo, con guardrails de draft/preview/apply/rollback.
+- PfChat prefiere el OpenAPI schema live de pfSense cuando está disponible
+- PfChat cachea datos de capacidades/schema para reducir fetches repetidos
+- la salida de ntopng se normaliza para que el operador reciba JSON estable aunque cambie la instalación subyacente
+- los nombres conocidos de dispositivos locales pueden enriquecerse desde inventario local para que la salida sea más legible que simples strings del vendor
 
-Ejemplos:
+## Documentos relacionados
 
-```bash
-python3 pfchat/scripts/pfchat_query.py block-ip --target 1.2.3.4
-python3 pfchat/scripts/pfchat_query.py block-device --target iphoneLeo
-python3 pfchat/scripts/pfchat_query.py block-device --target 192.168.0.95
-python3 pfchat/scripts/pfchat_query.py block-egress-port --target sniperhack --port 80 --proto tcp
-python3 pfchat/scripts/pfchat_query.py block-egress-proto --target sniperhack --proto icmp
-python3 pfchat/scripts/pfchat_query.py unblock-ip --target 1.2.3.4
-python3 pfchat/scripts/pfchat_query.py unblock-device --target sniperhack
-python3 pfchat/scripts/pfchat_query.py draft-list
-python3 pfchat/scripts/pfchat_query.py draft-show --draft-id <id>
-python3 pfchat/scripts/pfchat_query.py apply-draft --draft-id <id>
-python3 pfchat/scripts/pfchat_query.py apply-draft --draft-id <id> --confirm
-python3 pfchat/scripts/pfchat_query.py rollback-draft --draft-id <id>
-python3 pfchat/scripts/pfchat_query.py rollback-draft --draft-id <id> --confirm
-python3 pfchat/scripts/pfchat_query.py pfchat-managed-list
-python3 pfchat/scripts/pfchat_query.py pfchat-managed-cleanup
-python3 pfchat/scripts/pfchat_query.py pfchat-managed-cleanup --confirm
-```
-
-Comportamiento actual:
-- resuelve el target
-- propone metadata de alias/regla
-- guarda la propuesta localmente con un `draft_id`
-- soporta `draft-show`, `draft-list`, `apply-draft`, `rollback-draft`, `pfchat-managed-list`, `pfchat-managed-cleanup`, `unblock-ip`, `unblock-device`, `block-egress-port` y `block-egress-proto`
-- `apply-draft` sin `--confirm` solo hace preview y audita la intención
-- `apply-draft --confirm` ejecuta alias + regla + firewall apply solo cuando el schema confirma soporte
-- reintentos sobre un draft ya aplicado se tratan como idempotentes y no reejecutan writes
-- `rollback-draft` da preview/confirm de rollback usando IDs de objetos pfSense capturados durante apply
-- reporta soporte del schema para pasos de write/apply
-
-Validación real completada en este proyecto:
-- target usado: `sniperhack.uzc` / `192.168.0.81`
-- se validó en pfSense real el flujo completo de bloqueo total de host con apply/rollback
-- también se validó en pfSense real un bloqueo de salida específico `tcp/80` para `sniperhack`
-- también se validó en pfSense real un bloqueo de salida ICMP específico para `sniperhack`
-- apply creó aliases y reglas reales en pfSense
-- rollback eliminó los objetos limpiamente
-- la verificación final confirmó que no quedaron alias ni reglas residuales
-
-Caveats prácticos confirmados por el schema real de pfSense:
-- crear alias vía `POST /firewall/alias`
-- crear regla vía `POST /firewall/rule`
-- los nombres de alias deben respetar el límite de pfSense (31 chars)
-- los valores de `interface` deben usar opciones válidas en minúsculas como `lan` y `wan`
-- rollback es más seguro usando los IDs de objetos pfSense devueltos al crear
-- las reglas actuales de bloqueo para un solo host usan la IP literal en `source`, mientras los aliases siguen existiendo para tracking y cleanup gestionado por PfChat
-
-## Presets de automatización
-
-PfChat ahora incluye presets one-shot para scripting y automatización:
-
-- `--once compact` → summary compacto del snapshot
-- `--once triage` → summary más amplio del snapshot
-- `--once wan` → salida enfocada en WAN
-- `--once blocked` → vista de logs bloqueados recientes
-
-Vistas reducidas útiles:
-- `--view summary`
-- `--view wan`
-- `--view highlights`
-
-Ejemplos:
-
-```bash
-python3 pfchat/scripts/pfchat_query.py --once compact
-python3 pfchat/scripts/pfchat_query.py --once triage
-python3 pfchat/scripts/pfchat_query.py --once wan
-python3 pfchat/scripts/pfchat_query.py snapshot --limit 150 --view highlights
-```
-
-## CLI auxiliar
-
-Desde la raíz del repo:
-
-```bash
-python3 pfchat/scripts/pfchat_query.py capabilities
-python3 pfchat/scripts/pfchat_query.py devices
-python3 pfchat/scripts/pfchat_query.py connections --limit 200
-python3 pfchat/scripts/pfchat_query.py connections --limit 100 --host 192.168.0.95
-python3 pfchat/scripts/pfchat_query.py connections --limit 100 --port 443
-python3 pfchat/scripts/pfchat_query.py logs --limit 200 --action block --interface vtnet1
-python3 pfchat/scripts/pfchat_query.py logs --limit 200 --host 80.94.95.226
-python3 pfchat/scripts/pfchat_query.py interfaces
-python3 pfchat/scripts/pfchat_query.py health
-python3 pfchat/scripts/pfchat_query.py rules
-python3 pfchat/scripts/pfchat_query.py rules --filter descr__contains=OpenVPN
-python3 pfchat/scripts/pfchat_query.py snapshot --limit 150
-```
-
-## Uso desde Telegram
-
-Si OpenClaw ya está conectado a Telegram, no necesitas un bot separado dentro de PfChat. Puedes hablarle a OpenClaw desde Telegram y dejar que use PfChat detrás para consultar pfSense.
-
-Consulta `TELEGRAM.md` para prompts sugeridos, flujo recomendado y base de alertas/resúmenes.
-
-## Resumen diario por email
-
-PfChat puede generar un resumen diario del firewall y enviarlo por correo cuando OpenClaw tenga configurado Resend.
-
-Script local incluido:
-- `scripts/send_daily_summary.py`
-
-En este host, la forma correcta de que cron jobs y sesiones aisladas hereden variables globales es cargarlas desde el servicio `openclaw-gateway.service` mediante `EnvironmentFile`.
-
-Los reportes de PfChat deben preferir nombres de dispositivos tomados del inventario local (`TOOLS.md`). Si no existe mapping local, pueden usar reverse lookup y dejar la IP como respaldo.
-
-## Tests
-
-Ejecuta la suite actual con la librería estándar de Python:
-
-```bash
-python3 -m unittest discover -s tests -v
-```
-
-La suite incluye:
-- pruebas unitarias para parsing, validación de config, cache de schema y lógica de summary
-- pruebas de integración mockeadas para inventario de dispositivos y flujo de snapshot sin depender de un pfSense vivo
-
-## Documentos de referencia
-
-Material adicional de referencia:
-- `pfchat/references/output-shapes.md` — forma general del JSON que devuelve cada comando
-- `pfchat/references/investigation-examples.md` — workflows prácticos de investigación y comandos de ejemplo
-- `pfchat/references/endpoints.md` — notas de endpoints y fallbacks
-- `pfchat/references/upstream-notes.md` — notas upstream de pfrest/OpenAPI
-
-## Estado actual
-
-PfChat ya cubre el workflow de consulta en vivo por API. El foco actual es robustez, compatibilidad entre versiones y pulido operativo.
-
-Consulta `TODO.es.md`, `CHANGELOG.es.md`, `TELEGRAM.md` y los documentos de referencia para ver pendientes, cambios y patrones de uso. Las versiones base `TODO.md` y `CHANGELOG.md` están en inglés para GitHub.
-
-## Licencia
-
-MIT
+- `pfchat/SKILL.md`
+- `docs/unification-2026-03-19.md`
+- `pfchat/references/endpoints.md`
+- `pfchat/references/output-shapes.md`
+- `pfchat/references/investigation-patterns.md`
+- `pfchat/references/investigation-examples.md`
